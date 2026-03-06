@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 720" width="900" height="720" font-family="'Courier New', monospace">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+
+    <!-- Node gradients -->
+    <linearGradient id="triggerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1f6feb"/>
+      <stop offset="100%" style="stop-color:#388bfd"/>
+    </linearGradient>
+    <linearGradient id="buildGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a4a2e"/>
+      <stop offset="100%" style="stop-color:#238636"/>
+    </linearGradient>
+    <linearGradient id="parallelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3d2b00"/>
+      <stop offset="100%" style="stop-color:#9e6a03"/>
+    </linearGradient>
+    <linearGradient id="dockerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a3a5c"/>
+      <stop offset="100%" style="stop-color:#0969da"/>
+    </linearGradient>
+    <linearGradient id="securityGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a1a1a"/>
+      <stop offset="100%" style="stop-color:#da3633"/>
+    </linearGradient>
+    <linearGradient id="stagingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d1b69"/>
+      <stop offset="100%" style="stop-color:#8957e5"/>
+    </linearGradient>
+    <linearGradient id="prodGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a4a2e"/>
+      <stop offset="100%" style="stop-color:#2ea043"/>
+    </linearGradient>
+    <linearGradient id="cleanupGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#21262d"/>
+      <stop offset="100%" style="stop-color:#30363d"/>
+    </linearGradient>
+
+    <!-- Arrow marker -->
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#58a6ff" opacity="0.8"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#8b949e" opacity="0.8"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2ea043" opacity="0.9"/>
+    </marker>
+
+    <!-- Glow filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softglow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="720" fill="url(#bg)"/>
+
+  <!-- Subtle grid pattern -->
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#21262d" stroke-width="0.5"/>
+  </pattern>
+  <rect width="900" height="720" fill="url(#grid)" opacity="0.4"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" font-size="15" font-weight="bold" fill="#58a6ff" letter-spacing="4" filter="url(#softglow)">CI / CD PIPELINE</text>
+  <line x1="200" y1="48" x2="700" y2="48" stroke="#30363d" stroke-width="1"/>
+
+  <!-- ── TRIGGER ── -->
+  <rect x="325" y="62" width="250" height="48" rx="6" fill="url(#triggerGrad)" stroke="#388bfd" stroke-width="1.5" filter="url(#softglow)"/>
+  <text x="450" y="81" text-anchor="middle" font-size="10" fill="#cae8ff" letter-spacing="2">TRIGGER</text>
+  <text x="450" y="98" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Git Push / Pull Request</text>
+
+  <!-- Arrow: Trigger → Build -->
+  <line x1="450" y1="110" x2="450" y2="138" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>
+
+  <!-- ── BUILD ── -->
+  <rect x="325" y="142" width="250" height="48" rx="6" fill="url(#buildGrad)" stroke="#238636" stroke-width="1.5"/>
+  <text x="450" y="161" text-anchor="middle" font-size="10" fill="#aff5b4" letter-spacing="2">STAGE 1</text>
+  <text x="450" y="178" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Build</text>
+
+  <!-- Arrow: Build → Parallel fork -->
+  <line x1="450" y1="190" x2="450" y2="208" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <!-- Horizontal fork line -->
+  <line x1="230" y1="208" x2="670" y2="208" stroke="#58a6ff" stroke-width="1.5"/>
+  <!-- Arrow down to Lint -->
+  <line x1="230" y1="208" x2="230" y2="228" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- Arrow down to Test -->
+  <line x1="670" y1="208" x2="670" y2="228" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Parallel label -->
+  <rect x="370" y="198" width="160" height="20" rx="4" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="450" y="213" text-anchor="middle" font-size="9" fill="#8b949e" letter-spacing="2">PARALLEL EXECUTION</text>
+
+  <!-- ── LINT (left) ── -->
+  <rect x="120" y="232" width="220" height="48" rx="6" fill="url(#parallelGrad)" stroke="#9e6a03" stroke-width="1.5"/>
+  <text x="230" y="251" text-anchor="middle" font-size="10" fill="#ffd680" letter-spacing="2">STAGE 2A</text>
+  <text x="230" y="268" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Lint &amp; Code Quality</text>
+
+  <!-- ── TEST (right) ── -->
+  <rect x="560" y="232" width="220" height="48" rx="6" fill="url(#parallelGrad)" stroke="#9e6a03" stroke-width="1.5"/>
+  <text x="670" y="251" text-anchor="middle" font-size="10" fill="#ffd680" letter-spacing="2">STAGE 2B</text>
+  <text x="670" y="268" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Test Suite</text>
+
+  <!-- Merge arrows from Lint + Test → Docker Build -->
+  <line x1="230" y1="280" x2="230" y2="298" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="670" y1="280" x2="670" y2="298" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="230" y1="298" x2="670" y2="298" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="450" y1="298" x2="450" y2="318" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Merge label -->
+  <rect x="370" y="288" width="160" height="20" rx="4" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="450" y="303" text-anchor="middle" font-size="9" fill="#8b949e" letter-spacing="2">JOIN / MERGE</text>
+
+  <!-- ── DOCKER BUILD ── -->
+  <rect x="325" y="322" width="250" height="48" rx="6" fill="url(#dockerGrad)" stroke="#0969da" stroke-width="1.5"/>
+  <text x="450" y="341" text-anchor="middle" font-size="10" fill="#79c0ff" letter-spacing="2">STAGE 3</text>
+  <text x="450" y="358" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Docker Build</text>
+
+  <!-- Arrow: Docker Build → Security Scan -->
+  <line x1="450" y1="370" x2="450" y2="398" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>
+
+  <!-- ── SECURITY SCAN ── -->
+  <rect x="325" y="402" width="250" height="48" rx="6" fill="url(#securityGrad)" stroke="#da3633" stroke-width="1.5" filter="url(#softglow)"/>
+  <text x="450" y="421" text-anchor="middle" font-size="10" fill="#ffa198" letter-spacing="2">STAGE 4</text>
+  <text x="450" y="438" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Security Scan (Trivy)</text>
+
+  <!-- Arrow: Security → Docker Push -->
+  <line x1="450" y1="450" x2="450" y2="478" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>
+
+  <!-- ── DOCKER PUSH ── -->
+  <rect x="325" y="482" width="250" height="48" rx="6" fill="url(#dockerGrad)" stroke="#0969da" stroke-width="1.5"/>
+  <text x="450" y="501" text-anchor="middle" font-size="10" fill="#79c0ff" letter-spacing="2">STAGE 5</text>
+  <text x="450" y="518" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Docker Push to Registry</text>
+
+  <!-- Arrow: Docker Push → Deploy Staging -->
+  <line x1="450" y1="530" x2="450" y2="558" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>
+
+  <!-- ── DEPLOY STAGING ── -->
+  <rect x="325" y="562" width="250" height="48" rx="6" fill="url(#stagingGrad)" stroke="#8957e5" stroke-width="1.5"/>
+  <text x="450" y="581" text-anchor="middle" font-size="10" fill="#d2a8ff" letter-spacing="2">STAGE 6</text>
+  <text x="450" y="598" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Deploy → Staging + Smoke Tests</text>
+
+  <!-- Arrow: Staging → Production -->
+  <line x1="450" y1="610" x2="450" y2="638" stroke="#2ea043" stroke-width="2" marker-end="url(#arrowGreen)" stroke-dasharray="4,2"/>
+
+  <!-- ── DEPLOY PRODUCTION ── -->
+  <rect x="325" y="642" width="250" height="48" rx="6" fill="url(#prodGrad)" stroke="#2ea043" stroke-width="2" filter="url(#softglow)"/>
+  <text x="450" y="661" text-anchor="middle" font-size="10" fill="#aff5b4" letter-spacing="2">STAGE 7</text>
+  <text x="450" y="678" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Deploy → Production</text>
+
+  <!-- Cleanup branch (side) -->
+  <line x1="575" y1="666" x2="720" y2="666" stroke="#8b949e" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrowGray)"/>
+  <rect x="724" y="642" width="150" height="48" rx="6" fill="url(#cleanupGrad)" stroke="#30363d" stroke-width="1.2"/>
+  <text x="799" y="661" text-anchor="middle" font-size="9" fill="#8b949e" letter-spacing="2">POST</text>
+  <text x="799" y="678" text-anchor="middle" font-size="12" font-weight="bold" fill="#8b949e">Cleanup</text>
+
+  <!-- Rollback indicator on Security Scan -->
+  <line x1="325" y1="426" x2="170" y2="426" stroke="#da3633" stroke-width="1.2" stroke-dasharray="3,3"/>
+  <line x1="170" y1="426" x2="170" y2="166" stroke="#da3633" stroke-width="1.2" stroke-dasharray="3,3"/>
+  <line x1="170" y1="166" x2="325" y2="166" stroke="#da3633" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+  <rect x="90" y="280" width="76" height="22" rx="4" fill="#4a1a1a" stroke="#da3633" stroke-width="1"/>
+  <text x="128" y="295" text-anchor="middle" font-size="9" fill="#ffa198" letter-spacing="1">FAIL → BLOCK</text>
+
+  <!-- Legend -->
+  <rect x="18" y="560" width="90" height="130" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="63" y="578" text-anchor="middle" font-size="9" fill="#8b949e" letter-spacing="1">LEGEND</text>
+  <rect x="26" y="585" width="12" height="12" rx="2" fill="url(#triggerGrad)"/>
+  <text x="44" y="595" font-size="8" fill="#8b949e">Trigger</text>
+  <rect x="26" y="603" width="12" height="12" rx="2" fill="url(#buildGrad)"/>
+  <text x="44" y="613" font-size="8" fill="#8b949e">Build/Deploy</text>
+  <rect x="26" y="621" width="12" height="12" rx="2" fill="url(#parallelGrad)"/>
+  <text x="44" y="631" font-size="8" fill="#8b949e">Parallel</text>
+  <rect x="26" y="639" width="12" height="12" rx="2" fill="url(#securityGrad)"/>
+  <text x="44" y="649" font-size="8" fill="#8b949e">Security</text>
+  <rect x="26" y="657" width="12" height="12" rx="2" fill="url(#dockerGrad)"/>
+  <text x="44" y="667" font-size="8" fill="#8b949e">Docker</text>
+  <rect x="26" y="675" width="12" height="12" rx="2" fill="url(#stagingGrad)"/>
+  <text x="44" y="685" font-size="8" fill="#8b949e">Staging</text>
+</svg>

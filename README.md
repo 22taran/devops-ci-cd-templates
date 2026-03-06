@@ -61,7 +61,13 @@
 
 ## 🔄 Pipeline Stages
 
-Every pipeline follows a consistent **6-stage pattern**:
+Every pipeline follows a consistent pattern. Below is the full CI/CD flow including optional stages (Security Scan, Staging → Production):
+
+<p align="center">
+  <img src="cicd-pipeline.svg" alt="CI/CD Pipeline Diagram" width="900"/>
+</p>
+
+**Simplified flow** (as implemented in templates):
 
 ```mermaid
 flowchart TB
