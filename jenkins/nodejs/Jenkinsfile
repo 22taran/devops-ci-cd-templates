@@ -1,0 +1,90 @@
+pipeline {
+    agent {
+        docker {
+            image 'node:18-alpine'
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = 'myregistry/nodejs-app'
+        DOCKER_TAG   = "${env.BUILD_NUMBER}"
+        DEPLOY_ENV   = 'staging'
+        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+    }
+
+    options {
+        timeout(time: 20, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Install') {
+            steps {
+                echo '📦 Installing dependencies...'
+                sh 'npm ci'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                echo '🔍 Running ESLint...'
+                sh 'npm run lint'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo '🧪 Running tests with coverage...'
+                sh 'npm test -- --coverage --ci'
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        reportDir: 'coverage/lcov-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                echo '🐳 Building Docker image...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "🚀 Deploying to ${DEPLOY_ENV}..."
+                sh """
+                    echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
+                    // kubectl set image deployment/nodejs-app nodejs-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

@@ -1,0 +1,49 @@
+image: ruby:3.3
+
+pipelines:
+  default:
+    - step:
+        name: Install & Lint
+        caches:
+          - bundler
+        script:
+          - bundle install
+          - bundle exec rubocop
+
+    - step:
+        name: Test
+        caches:
+          - bundler
+        script:
+          - bundle install
+          - bundle exec rspec
+
+  branches:
+    main:
+      - step:
+          name: Lint & Test
+          caches:
+            - bundler
+          script:
+            - bundle install
+            - bundle exec rubocop
+            - bundle exec rspec
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/ruby-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/ruby-app:$BITBUCKET_COMMIT
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"
+
+definitions:
+  caches:
+    bundler: vendor/bundle

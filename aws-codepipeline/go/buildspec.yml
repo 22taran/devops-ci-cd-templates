@@ -1,0 +1,36 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/go-app
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.21
+    commands:
+      - echo "Go version $(go version)"
+
+  pre_build:
+    commands:
+      - echo "Running lint..."
+      - go vet ./...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - echo "Building..."
+      - go build -v -o bin/app ./...
+      - echo "Running tests..."
+      - go test -v -race -coverprofile=coverage.out ./...
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+
+  post_build:
+    commands:
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - printf '[{"name":"go-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - bin/app

@@ -1,0 +1,76 @@
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/php-app
+
+cache:
+  paths:
+    - vendor/
+
+build:
+  stage: build
+  image: php:8.2-cli
+  before_script:
+    - apt-get update && apt-get install -y unzip
+    - curl -sS https://getcomposer.org/installer | php
+    - mv composer.phar /usr/local/bin/composer
+  script:
+    - composer install --no-interaction --prefer-dist
+
+lint:
+  stage: lint
+  image: php:8.2-cli
+  before_script:
+    - apt-get update && apt-get install -y unzip
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  script:
+    - composer install --no-interaction --prefer-dist
+    - vendor/bin/phpcs src/ --standard=PSR12
+    - vendor/bin/phpstan analyse src/ --level=5
+
+test:
+  stage: test
+  image: php:8.2-cli
+  before_script:
+    - apt-get update && apt-get install -y unzip
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - docker-php-ext-enable xdebug || true
+  script:
+    - composer install --no-interaction --prefer-dist
+    - vendor/bin/phpunit tests/ --coverage-clover=coverage.xml
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 7 days
+
+docker:
+  stage: docker
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
+    - docker push $DOCKER_IMAGE:latest
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: alpine:3.18
+  script:
+    - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging"
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual

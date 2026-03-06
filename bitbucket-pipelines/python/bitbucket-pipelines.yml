@@ -1,0 +1,45 @@
+image: python:3.12-slim
+
+pipelines:
+  default:
+    - step:
+        name: Lint
+        caches:
+          - pip
+        script:
+          - pip install flake8
+          - flake8 app.py --max-line-length=120
+
+    - step:
+        name: Test
+        caches:
+          - pip
+        script:
+          - pip install -r requirements.txt
+          - pytest tests/ -v --cov=.
+
+  branches:
+    main:
+      - step:
+          name: Lint & Test
+          caches:
+            - pip
+          script:
+            - pip install -r requirements.txt
+            - flake8 app.py --max-line-length=120
+            - pytest tests/ -v --cov=.
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/python-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/python-app:$BITBUCKET_COMMIT
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"

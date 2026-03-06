@@ -1,0 +1,104 @@
+pipeline {
+    agent {
+        docker {
+            image 'mcr.microsoft.com/dotnet/sdk:8.0'
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = 'myregistry/dotnet-app'
+        DOCKER_TAG   = "${env.BUILD_NUMBER}"
+        DEPLOY_ENV   = 'staging'
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Restore') {
+            steps {
+                echo '📦 Restoring NuGet packages...'
+                sh 'dotnet restore'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo '🔨 Building .NET application...'
+                sh 'dotnet build --no-restore --configuration Release'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                echo '🔍 Running code analysis...'
+                sh 'dotnet format --verify-no-changes --verbosity diagnostic'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo '🧪 Running tests with coverage...'
+                sh 'dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./TestResults'
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        reportDir: 'TestResults',
+                        reportFiles: '*/coverage.cobertura.xml',
+                        reportName: 'Coverage Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Publish') {
+            steps {
+                echo '📦 Publishing application...'
+                sh 'dotnet publish --no-build --configuration Release --output ./publish'
+                archiveArtifacts artifacts: 'publish/**', fingerprint: true
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                echo '🐳 Building Docker image...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "🚀 Deploying to ${DEPLOY_ENV}..."
+                sh """
+                    echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
+                    // kubectl set image deployment/dotnet-app dotnet-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

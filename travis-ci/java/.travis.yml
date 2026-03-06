@@ -1,0 +1,46 @@
+language: java
+jdk:
+  - openjdk17
+
+cache:
+  directories:
+    - $HOME/.m2
+
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+jobs:
+  include:
+    - stage: build
+      name: "Build"
+      script: mvn clean compile package -DskipTests -B
+
+    - stage: lint
+      name: "Lint"
+      script: mvn checkstyle:check -B
+
+    - stage: test
+      name: "Test"
+      script: mvn test -B
+
+    - stage: docker
+      name: "Docker Build & Push"
+      if: branch = main
+      services:
+        - docker
+      script:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        - docker build -t myregistry/java-app:$TRAVIS_COMMIT .
+        - docker tag myregistry/java-app:$TRAVIS_COMMIT myregistry/java-app:latest
+        - docker push myregistry/java-app:$TRAVIS_COMMIT
+        - docker push myregistry/java-app:latest
+
+    - stage: deploy
+      name: "Deploy"
+      if: branch = main
+      script:
+        - echo "Deploying myregistry/java-app:$TRAVIS_COMMIT to staging"

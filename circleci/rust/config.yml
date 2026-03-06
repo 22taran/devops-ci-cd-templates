@@ -1,0 +1,69 @@
+version: 2.1
+
+orbs:
+  rust: circleci/rust@1.6.1
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/rust:1.73
+    steps:
+      - checkout
+      - rust/build:
+          release: true
+      - persist_to_workspace:
+          root: .
+          paths: [target/release/]
+
+  lint:
+    docker:
+      - image: cimg/rust:1.73
+    steps:
+      - checkout
+      - rust/clippy
+      - rust/format
+
+  test:
+    docker:
+      - image: cimg/rust:1.73
+    steps:
+      - checkout
+      - rust/test
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/rust-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/rust-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

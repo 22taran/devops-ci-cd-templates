@@ -1,0 +1,80 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@2.1.1
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - python/install-packages:
+          pip-dependency-file: requirements.txt
+      - persist_to_workspace:
+          root: .
+          paths: [.]
+
+  lint:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - python/install-packages:
+          pip-dependency-file: requirements.txt
+      - run:
+          name: Flake8
+          command: flake8 app.py --max-line-length=120
+
+  test:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - python/install-packages:
+          pip-dependency-file: requirements.txt
+      - run:
+          name: Pytest
+          command: pytest tests/ -v --cov=. --cov-report=html
+      - store_artifacts:
+          path: htmlcov
+          destination: coverage
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/python-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/python-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint:
+          requires: [build]
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

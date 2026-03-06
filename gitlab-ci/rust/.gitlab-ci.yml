@@ -1,0 +1,64 @@
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/rust-app
+  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+
+cache:
+  paths:
+    - .cargo/
+    - target/
+
+build:
+  stage: build
+  image: rust:1.73-slim
+  script:
+    - cargo build --release
+  artifacts:
+    paths:
+      - target/release/sample-rust-app
+    expire_in: 1 hour
+
+lint:
+  stage: lint
+  image: rust:1.73-slim
+  script:
+    - rustup component add clippy rustfmt
+    - cargo clippy -- -D warnings
+    - cargo fmt -- --check
+
+test:
+  stage: test
+  image: rust:1.73-slim
+  script:
+    - cargo test --verbose
+
+docker:
+  stage: docker
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
+    - docker push $DOCKER_IMAGE:latest
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: alpine:3.18
+  script:
+    - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging"
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual

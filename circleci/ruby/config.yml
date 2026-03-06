@@ -1,0 +1,67 @@
+version: 2.1
+
+orbs:
+  ruby: circleci/ruby@2.1.0
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/ruby:3.3
+    steps:
+      - checkout
+      - ruby/install-deps
+
+  lint:
+    docker:
+      - image: cimg/ruby:3.3
+    steps:
+      - checkout
+      - ruby/install-deps
+      - run: bundle exec rubocop
+
+  test:
+    docker:
+      - image: cimg/ruby:3.3
+    steps:
+      - checkout
+      - ruby/install-deps
+      - run: bundle exec rspec --format documentation
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/ruby-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/ruby-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint:
+          requires: [build]
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

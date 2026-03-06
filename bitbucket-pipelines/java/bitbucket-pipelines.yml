@@ -1,0 +1,67 @@
+image: maven:3.9-eclipse-temurin-17
+
+pipelines:
+  default:
+    - step:
+        name: Build
+        caches:
+          - maven
+        script:
+          - mvn clean compile -B
+          - mvn package -DskipTests -B
+        artifacts:
+          - target/*.jar
+
+    - step:
+        name: Lint
+        caches:
+          - maven
+        script:
+          - mvn checkstyle:check -B
+
+    - step:
+        name: Test
+        caches:
+          - maven
+        script:
+          - mvn test -B
+
+  branches:
+    main:
+      - step:
+          name: Build
+          caches:
+            - maven
+          script:
+            - mvn clean package -DskipTests -B
+          artifacts:
+            - target/*.jar
+
+      - step:
+          name: Test
+          caches:
+            - maven
+          script:
+            - mvn test -B
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/java-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/java-app:$BITBUCKET_COMMIT
+            - docker tag myregistry/java-app:$BITBUCKET_COMMIT myregistry/java-app:latest
+            - docker push myregistry/java-app:latest
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"
+
+definitions:
+  services:
+    docker:
+      memory: 2048

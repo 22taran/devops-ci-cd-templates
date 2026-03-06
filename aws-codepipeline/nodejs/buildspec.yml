@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/nodejs-app
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - npm ci
+
+  pre_build:
+    commands:
+      - echo "Running lint..."
+      - npm run lint
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - echo "Running tests..."
+      - npm test -- --coverage --ci
+      - echo "Building Docker image..."
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+      - docker tag $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION $ECR_REPO:latest
+
+  post_build:
+    commands:
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPO:latest
+      - printf '[{"name":"nodejs-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+
+cache:
+  paths:
+    - "node_modules/**/*"

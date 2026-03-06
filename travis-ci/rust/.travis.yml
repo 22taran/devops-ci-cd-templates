@@ -1,0 +1,38 @@
+language: rust
+rust:
+  - stable
+
+cache: cargo
+
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+jobs:
+  include:
+    - stage: build
+      script: cargo build --release
+
+    - stage: lint
+      script:
+        - rustup component add clippy rustfmt
+        - cargo clippy -- -D warnings
+        - cargo fmt -- --check
+
+    - stage: test
+      script: cargo test --verbose
+
+    - stage: docker
+      if: branch = main
+      services: docker
+      script:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        - docker build -t myregistry/rust-app:$TRAVIS_COMMIT .
+        - docker push myregistry/rust-app:$TRAVIS_COMMIT
+
+    - stage: deploy
+      if: branch = main
+      script: echo "Deploying to staging"

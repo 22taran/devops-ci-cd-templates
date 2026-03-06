@@ -1,0 +1,37 @@
+language: go
+go:
+  - "1.21.x"
+
+env:
+  - GO111MODULE=on
+
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+jobs:
+  include:
+    - stage: build
+      script: go build -v -o bin/app ./...
+
+    - stage: lint
+      script: go vet ./...
+
+    - stage: test
+      script: go test -v -race -coverprofile=coverage.out ./...
+
+    - stage: docker
+      if: branch = main
+      services:
+        - docker
+      script:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        - docker build -t myregistry/go-app:$TRAVIS_COMMIT .
+        - docker push myregistry/go-app:$TRAVIS_COMMIT
+
+    - stage: deploy
+      if: branch = main
+      script: echo "Deploying to staging"

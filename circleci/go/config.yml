@@ -1,0 +1,82 @@
+version: 2.1
+
+orbs:
+  go: circleci/go@1.9.0
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/go:1.21
+    steps:
+      - checkout
+      - go/load-cache
+      - go/mod-download
+      - go/save-cache
+      - run:
+          name: Build
+          command: go build -v -o bin/app ./...
+      - persist_to_workspace:
+          root: .
+          paths: [bin/]
+
+  lint:
+    docker:
+      - image: cimg/go:1.21
+    steps:
+      - checkout
+      - go/load-cache
+      - go/mod-download
+      - run:
+          name: Vet
+          command: go vet ./...
+
+  test:
+    docker:
+      - image: cimg/go:1.21
+    steps:
+      - checkout
+      - go/load-cache
+      - go/mod-download
+      - run:
+          name: Test
+          command: go test -v -race -coverprofile=coverage.out ./...
+      - store_artifacts:
+          path: coverage.out
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/go-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/go-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

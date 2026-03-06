@@ -1,0 +1,96 @@
+pipeline {
+    agent {
+        docker {
+            image 'golang:1.21-alpine'
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = 'myregistry/go-app'
+        DOCKER_TAG   = "${env.BUILD_NUMBER}"
+        DEPLOY_ENV   = 'staging'
+        GOPATH       = "${WORKSPACE}/go"
+        CGO_ENABLED  = '0'
+    }
+
+    options {
+        timeout(time: 20, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                echo '🔨 Building Go application...'
+                sh 'go build -v -o bin/app ./...'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                echo '🔍 Running go vet and staticcheck...'
+                sh '''
+                    go vet ./...
+                    go install honnef.co/go/tools/cmd/staticcheck@latest
+                    staticcheck ./...
+                '''
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo '🧪 Running tests with coverage...'
+                sh 'go test -v -coverprofile=coverage.out ./...'
+                sh 'go tool cover -html=coverage.out -o coverage.html'
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        reportDir: '.',
+                        reportFiles: 'coverage.html',
+                        reportName: 'Coverage Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                echo '🐳 Building Docker image...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "🚀 Deploying to ${DEPLOY_ENV}..."
+                sh """
+                    echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
+                    // kubectl set image deployment/go-app go-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

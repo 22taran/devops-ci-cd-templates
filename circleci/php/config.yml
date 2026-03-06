@@ -1,0 +1,73 @@
+version: 2.1
+
+orbs:
+  php: circleci/php@1.1.0
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/php:8.2
+    steps:
+      - checkout
+      - php/install-composer
+      - php/install-packages
+
+  lint:
+    docker:
+      - image: cimg/php:8.2
+    steps:
+      - checkout
+      - php/install-composer
+      - php/install-packages
+      - run: vendor/bin/phpcs src/ --standard=PSR12
+      - run: vendor/bin/phpstan analyse src/ --level=5
+
+  test:
+    docker:
+      - image: cimg/php:8.2
+    steps:
+      - checkout
+      - php/install-composer
+      - php/install-packages
+      - run: vendor/bin/phpunit tests/
+      - store_test_results:
+          path: test-results
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/php-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/php-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint:
+          requires: [build]
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

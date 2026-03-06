@@ -1,0 +1,90 @@
+pipeline {
+    agent {
+        docker {
+            image 'ruby:3.3-slim'
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = 'myregistry/ruby-app'
+        DOCKER_TAG   = "${env.BUILD_NUMBER}"
+        DEPLOY_ENV   = 'staging'
+        BUNDLE_PATH  = "${WORKSPACE}/vendor/bundle"
+    }
+
+    options {
+        timeout(time: 20, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Install') {
+            steps {
+                echo '📦 Installing gems...'
+                sh 'bundle install'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                echo '🔍 Running RuboCop...'
+                sh 'bundle exec rubocop'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo '🧪 Running RSpec tests...'
+                sh 'bundle exec rspec --format documentation --format html --out rspec_results.html'
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        reportDir: '.',
+                        reportFiles: 'rspec_results.html',
+                        reportName: 'RSpec Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                echo '🐳 Building Docker image...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "🚀 Deploying to ${DEPLOY_ENV}..."
+                sh """
+                    echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
+                    // kubectl set image deployment/ruby-app ruby-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

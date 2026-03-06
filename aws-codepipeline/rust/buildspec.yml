@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/rust-app
+
+phases:
+  install:
+    commands:
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - source $HOME/.cargo/env
+      - rustup component add clippy rustfmt
+
+  pre_build:
+    commands:
+      - source $HOME/.cargo/env
+      - echo "Running lint..."
+      - cargo clippy -- -D warnings
+      - cargo fmt -- --check
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - source $HOME/.cargo/env
+      - cargo build --release
+      - cargo test --verbose
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+
+  post_build:
+    commands:
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - printf '[{"name":"rust-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+
+cache:
+  paths:
+    - "/root/.cargo/**/*"
+    - "target/**/*"

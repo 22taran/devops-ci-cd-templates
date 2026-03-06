@@ -1,0 +1,37 @@
+image: golang:1.21
+
+pipelines:
+  default:
+    - step:
+        name: Build & Lint
+        script:
+          - go build -v ./...
+          - go vet ./...
+
+    - step:
+        name: Test
+        script:
+          - go test -v -race ./...
+
+  branches:
+    main:
+      - step:
+          name: Build & Test
+          script:
+            - go build -v -o bin/app ./...
+            - go test -v -race -coverprofile=coverage.out ./...
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/go-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/go-app:$BITBUCKET_COMMIT
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"

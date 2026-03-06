@@ -1,0 +1,21 @@
+{
+  "name": "sample-nodejs-app",
+  "version": "1.0.0",
+  "description": "Minimal Node.js application for CI/CD pipeline demos",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest --coverage",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.50.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

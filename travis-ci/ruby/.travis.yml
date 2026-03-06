@@ -1,0 +1,35 @@
+language: ruby
+rvm:
+  - 3.3
+
+cache: bundler
+
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+jobs:
+  include:
+    - stage: build
+      script: bundle install
+
+    - stage: lint
+      script: bundle exec rubocop
+
+    - stage: test
+      script: bundle exec rspec --format documentation
+
+    - stage: docker
+      if: branch = main
+      services: docker
+      script:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        - docker build -t myregistry/ruby-app:$TRAVIS_COMMIT .
+        - docker push myregistry/ruby-app:$TRAVIS_COMMIT
+
+    - stage: deploy
+      if: branch = main
+      script: echo "Deploying to staging"

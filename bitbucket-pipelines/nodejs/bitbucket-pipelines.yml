@@ -1,0 +1,52 @@
+image: node:18
+
+pipelines:
+  default:
+    - step:
+        name: Install & Lint
+        caches:
+          - node
+        script:
+          - npm ci
+          - npm run lint
+
+    - step:
+        name: Test
+        caches:
+          - node
+        script:
+          - npm ci
+          - npm test -- --coverage --ci
+
+  branches:
+    main:
+      - step:
+          name: Install & Lint
+          caches:
+            - node
+          script:
+            - npm ci
+            - npm run lint
+
+      - step:
+          name: Test
+          caches:
+            - node
+          script:
+            - npm ci
+            - npm test -- --coverage --ci
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/nodejs-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/nodejs-app:$BITBUCKET_COMMIT
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"

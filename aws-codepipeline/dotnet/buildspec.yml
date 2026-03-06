@@ -1,0 +1,35 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/dotnet-app
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 8.0
+    commands:
+      - dotnet restore
+
+  pre_build:
+    commands:
+      - echo "Running lint..."
+      - dotnet format --verify-no-changes
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - dotnet build --configuration Release
+      - dotnet test --configuration Release
+      - dotnet publish --configuration Release --output ./publish
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+
+  post_build:
+    commands:
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - printf '[{"name":"dotnet-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - publish/**/*

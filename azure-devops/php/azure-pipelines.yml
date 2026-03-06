@@ -1,0 +1,73 @@
+trigger:
+  branches:
+    include: [main, develop]
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  DOCKER_IMAGE: 'myregistry/php-app'
+
+stages:
+  - stage: Build
+    displayName: '🔨 Build'
+    jobs:
+      - job: Build
+        steps:
+          - script: |
+              sudo apt-get update && sudo apt-get install -y php8.2-cli php8.2-xml php8.2-mbstring unzip
+              curl -sS https://getcomposer.org/installer | php
+              php composer.phar install --no-interaction --prefer-dist
+
+  - stage: Lint
+    displayName: '🔍 Lint'
+    dependsOn: Build
+    jobs:
+      - job: Lint
+        steps:
+          - script: |
+              sudo apt-get update && sudo apt-get install -y php8.2-cli php8.2-xml php8.2-mbstring unzip
+              curl -sS https://getcomposer.org/installer | php
+              php composer.phar install --no-interaction --prefer-dist
+              vendor/bin/phpcs src/ --standard=PSR12
+              vendor/bin/phpstan analyse src/ --level=5
+
+  - stage: Test
+    displayName: '🧪 Test'
+    dependsOn: Build
+    jobs:
+      - job: Test
+        steps:
+          - script: |
+              sudo apt-get update && sudo apt-get install -y php8.2-cli php8.2-xml php8.2-mbstring unzip
+              curl -sS https://getcomposer.org/installer | php
+              php composer.phar install --no-interaction --prefer-dist
+              vendor/bin/phpunit tests/
+
+  - stage: Docker
+    displayName: '🐳 Docker'
+    dependsOn: [Lint, Test]
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: Docker
+        steps:
+          - task: Docker@2
+            inputs:
+              containerRegistry: 'docker-hub-connection'
+              repository: $(DOCKER_IMAGE)
+              command: 'buildAndPush'
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  - stage: Deploy
+    displayName: '🚀 Deploy'
+    dependsOn: Docker
+    jobs:
+      - deployment: Deploy
+        environment: staging
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Deploying to staging"

@@ -1,0 +1,62 @@
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/ruby-app
+
+cache:
+  paths:
+    - vendor/bundle/
+
+build:
+  stage: build
+  image: ruby:3.3-slim
+  script:
+    - bundle install --path vendor/bundle
+
+lint:
+  stage: lint
+  image: ruby:3.3-slim
+  script:
+    - bundle install --path vendor/bundle
+    - bundle exec rubocop
+
+test:
+  stage: test
+  image: ruby:3.3-slim
+  script:
+    - bundle install --path vendor/bundle
+    - bundle exec rspec --format documentation --format html --out rspec_results.html
+  artifacts:
+    paths:
+      - rspec_results.html
+    expire_in: 7 days
+
+docker:
+  stage: docker
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
+    - docker push $DOCKER_IMAGE:latest
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: alpine:3.18
+  script:
+    - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging"
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual

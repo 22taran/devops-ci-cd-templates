@@ -1,0 +1,49 @@
+image: rust:1.73
+
+pipelines:
+  default:
+    - step:
+        name: Build & Lint
+        caches:
+          - cargo
+        script:
+          - cargo build --release
+          - rustup component add clippy rustfmt
+          - cargo clippy -- -D warnings
+          - cargo fmt -- --check
+
+    - step:
+        name: Test
+        caches:
+          - cargo
+        script:
+          - cargo test --verbose
+
+  branches:
+    main:
+      - step:
+          name: Build & Test
+          caches:
+            - cargo
+          script:
+            - cargo build --release
+            - cargo test --verbose
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/rust-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/rust-app:$BITBUCKET_COMMIT
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"
+
+definitions:
+  caches:
+    cargo: ~/.cargo

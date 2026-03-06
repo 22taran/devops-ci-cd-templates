@@ -1,0 +1,85 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.2.0
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:18.19
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules/
+
+  lint:
+    docker:
+      - image: cimg/node:18.19
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: ESLint
+          command: npm run lint
+
+  test:
+    docker:
+      - image: cimg/node:18.19
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run tests
+          command: npm test -- --coverage --ci
+      - store_test_results:
+          path: coverage
+      - store_artifacts:
+          path: coverage
+          destination: coverage
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/nodejs-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/nodejs-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Deploy to staging
+          command: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint:
+          requires: [build]
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

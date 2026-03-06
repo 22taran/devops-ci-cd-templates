@@ -1,0 +1,64 @@
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/dotnet-app
+
+build:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet restore
+    - dotnet build --no-restore --configuration Release
+    - dotnet publish --no-build --configuration Release --output ./publish
+  artifacts:
+    paths:
+      - publish/
+    expire_in: 1 hour
+
+lint:
+  stage: lint
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet format --verify-no-changes
+
+test:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet test --configuration Release --collect:"XPlat Code Coverage" --results-directory ./TestResults
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: TestResults/*/coverage.cobertura.xml
+    expire_in: 7 days
+
+docker:
+  stage: docker
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
+    - docker push $DOCKER_IMAGE:latest
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: alpine:3.18
+  script:
+    - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging"
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual

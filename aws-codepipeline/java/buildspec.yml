@@ -1,0 +1,53 @@
+version: 0.2
+
+env:
+  variables:
+    JAVA_HOME: /usr/lib/jvm/java-17-amazon-corretto
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/java-app
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+    commands:
+      - echo "Installing dependencies..."
+
+  pre_build:
+    commands:
+      - echo "Running lint..."
+      - mvn checkstyle:check -B
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - echo "Building application..."
+      - mvn clean package -B
+      - echo "Running tests..."
+      - mvn test -B
+      - echo "Building Docker image..."
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+      - docker tag $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION $ECR_REPO:latest
+
+  post_build:
+    commands:
+      - echo "Pushing Docker image..."
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPO:latest
+      - echo "Creating imagedefinitions.json..."
+      - printf '[{"name":"java-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - target/*.jar
+
+reports:
+  junit-reports:
+    files:
+      - "target/surefire-reports/TEST-*.xml"
+    file-format: JUNITXML
+
+cache:
+  paths:
+    - "/root/.m2/**/*"

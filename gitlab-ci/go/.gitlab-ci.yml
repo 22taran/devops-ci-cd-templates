@@ -1,0 +1,71 @@
+stages:
+  - build
+  - lint
+  - test
+  - docker
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/go-app
+  GOPATH: $CI_PROJECT_DIR/.go
+
+cache:
+  paths:
+    - .go/pkg/mod/
+
+build:
+  stage: build
+  image: golang:1.21-alpine
+  script:
+    - go build -v -o bin/app ./...
+  artifacts:
+    paths:
+      - bin/app
+    expire_in: 1 hour
+
+lint:
+  stage: lint
+  image: golang:1.21-alpine
+  script:
+    - go vet ./...
+    - go install honnef.co/go/tools/cmd/staticcheck@latest
+    - staticcheck ./...
+
+test:
+  stage: test
+  image: golang:1.21-alpine
+  script:
+    - go test -v -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  artifacts:
+    paths:
+      - coverage.out
+    expire_in: 7 days
+  coverage: '/total:\s+\(statements\)\s+(\d+.\d+)%/'
+
+docker:
+  stage: docker
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
+    - docker push $DOCKER_IMAGE:latest
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: alpine:3.18
+  script:
+    - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging"
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual

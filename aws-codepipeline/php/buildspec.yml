@@ -1,0 +1,39 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/php-app
+
+phases:
+  install:
+    runtime-versions:
+      php: 8.2
+    commands:
+      - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+      - composer install --no-interaction --prefer-dist
+
+  pre_build:
+    commands:
+      - echo "Running lint..."
+      - vendor/bin/phpcs src/ --standard=PSR12
+      - vendor/bin/phpstan analyse src/ --level=5
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - echo "Running tests..."
+      - vendor/bin/phpunit tests/
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+
+  post_build:
+    commands:
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - printf '[{"name":"php-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+
+cache:
+  paths:
+    - "vendor/**/*"

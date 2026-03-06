@@ -1,0 +1,46 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: your-account-id.dkr.ecr.us-east-1.amazonaws.com/python-app
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - pip install -r requirements.txt
+
+  pre_build:
+    commands:
+      - echo "Running lint..."
+      - flake8 app.py --max-line-length=120
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - echo "Running tests..."
+      - pytest tests/ -v --cov=. --cov-report=xml
+      - echo "Building Docker image..."
+      - docker build -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+
+  post_build:
+    commands:
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPO:latest
+      - printf '[{"name":"python-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+
+reports:
+  coverage-report:
+    files:
+      - "coverage.xml"
+    file-format: COBERTURAXML
+
+cache:
+  paths:
+    - "/root/.cache/pip/**/*"

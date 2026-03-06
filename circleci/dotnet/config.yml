@@ -1,0 +1,68 @@
+version: 2.1
+
+orbs:
+  docker: circleci/docker@2.4.0
+
+jobs:
+  build:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:8.0
+    steps:
+      - checkout
+      - run: dotnet restore
+      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet publish --no-build --configuration Release --output ./publish
+      - persist_to_workspace:
+          root: .
+          paths: [publish/]
+
+  lint:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:8.0
+    steps:
+      - checkout
+      - run: dotnet format --verify-no-changes
+
+  test:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:8.0
+    steps:
+      - checkout
+      - run: dotnet test --configuration Release --collect:"XPlat Code Coverage"
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check
+      - docker/build:
+          image: myregistry/dotnet-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/dotnet-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Deploying to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint
+      - test:
+          requires: [build]
+      - docker-build:
+          requires: [lint, test]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main

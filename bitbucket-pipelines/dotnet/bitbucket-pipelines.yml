@@ -1,0 +1,39 @@
+image: mcr.microsoft.com/dotnet/sdk:8.0
+
+pipelines:
+  default:
+    - step:
+        name: Build & Lint
+        script:
+          - dotnet restore
+          - dotnet build --configuration Release
+          - dotnet format --verify-no-changes
+
+    - step:
+        name: Test
+        script:
+          - dotnet test --configuration Release
+
+  branches:
+    main:
+      - step:
+          name: Build & Test
+          script:
+            - dotnet restore
+            - dotnet build --configuration Release
+            - dotnet test --configuration Release
+
+      - step:
+          name: Docker Build & Push
+          services:
+            - docker
+          script:
+            - docker build -t myregistry/dotnet-app:$BITBUCKET_COMMIT .
+            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            - docker push myregistry/dotnet-app:$BITBUCKET_COMMIT
+
+      - step:
+          name: Deploy
+          deployment: staging
+          script:
+            - echo "Deploying to staging"

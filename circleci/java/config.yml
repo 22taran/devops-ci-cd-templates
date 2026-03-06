@@ -1,0 +1,107 @@
+version: 2.1
+
+orbs:
+  docker: circleci/docker@2.4.0
+
+executors:
+  java:
+    docker:
+      - image: cimg/openjdk:17.0
+
+jobs:
+  build:
+    executor: java
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+      - run:
+          name: Build
+          command: mvn clean compile -B
+      - run:
+          name: Package
+          command: mvn package -DskipTests -B
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: maven-{{ checksum "pom.xml" }}
+      - persist_to_workspace:
+          root: .
+          paths:
+            - target/
+
+  lint:
+    executor: java
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+      - run:
+          name: Checkstyle
+          command: mvn checkstyle:check -B
+
+  test:
+    executor: java
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+      - run:
+          name: Run Tests
+          command: mvn test -B
+      - store_test_results:
+          path: target/surefire-reports
+      - store_artifacts:
+          path: target/site/jacoco
+          destination: coverage
+
+  docker-build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - attach_workspace:
+          at: .
+      - docker/check:
+          docker-username: DOCKER_USERNAME
+          docker-password: DOCKER_PASSWORD
+      - docker/build:
+          image: myregistry/java-app
+          tag: ${CIRCLE_SHA1},latest
+      - docker/push:
+          image: myregistry/java-app
+          tag: ${CIRCLE_SHA1},latest
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Deploy to staging
+          command: |
+            echo "Deploying myregistry/java-app:${CIRCLE_SHA1} to staging"
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - lint
+      - test:
+          requires:
+            - build
+      - docker-build:
+          requires:
+            - lint
+            - test
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires:
+            - docker-build
+          filters:
+            branches:
+              only: main
