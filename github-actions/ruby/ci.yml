@@ -1,5 +1,12 @@
+# ---------------------------------------------------------------------------
+# GitHub Actions Workflow -- Ruby
+# Jobs: Build -> Lint, Test (parallel) -> Docker -> Deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD secrets
+# ---------------------------------------------------------------------------
+
 name: Ruby CI/CD Pipeline
 
+# Trigger on push to main/develop and on PRs to main
 on:
   push:
     branches: [main, develop]

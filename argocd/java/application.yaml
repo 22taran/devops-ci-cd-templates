@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# ArgoCD Application -- Java App
+# GitOps: Syncs K8s manifests from Git. Update repoURL and targetRevision.
+# Requires: ArgoCD installed, K8s cluster, container registry with image
+# ---------------------------------------------------------------------------
+
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

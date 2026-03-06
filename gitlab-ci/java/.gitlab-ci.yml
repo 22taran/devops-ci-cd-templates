@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# GitLab CI/CD Pipeline -- Java (Maven)
+# Stages: build -> lint -> test -> docker -> deploy
+# Uses: CI_REGISTRY, CI_REGISTRY_USER, CI_REGISTRY_PASSWORD (auto-injected)
+# ---------------------------------------------------------------------------
+
 stages:
   - build
   - lint
@@ -5,6 +11,7 @@ stages:
   - docker
   - deploy
 
+# MAVEN_OPTS: local repo in project dir. DOCKER_IMAGE: use CI_REGISTRY_IMAGE
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
   DOCKER_IMAGE: $CI_REGISTRY_IMAGE/java-app

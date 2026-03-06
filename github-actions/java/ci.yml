@@ -1,16 +1,25 @@
+# ---------------------------------------------------------------------------
+# GitHub Actions Workflow -- Java (Maven)
+# Jobs: Build -> Lint, Test (parallel) -> Docker -> Deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD secrets
+# ---------------------------------------------------------------------------
+
 name: Java CI/CD Pipeline
 
+# Trigger on push to main/develop and on PRs to main
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
 
+# Shared env vars. DOCKER_IMAGE: customize for your registry (e.g., ghcr.io/org/repo)
 env:
   JAVA_VERSION: '17'
   DOCKER_IMAGE: myregistry/java-app
 
 jobs:
+  # Compile and package. cache: maven speeds up dependency resolution.
   build:
     name: 🔨 Build
     runs-on: ubuntu-latest
@@ -24,18 +33,22 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # -B batch mode (non-interactive). clean removes previous artifacts
       - name: Build with Maven
         run: mvn clean compile -B
 
+      # -DskipTests avoids re-running tests (already run in test job)
       - name: Package
         run: mvn package -DskipTests -B
 
+      # Artifact available to downstream jobs or for download
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: java-app
           path: target/*.jar
 
+  # Checkstyle enforces code style. Fails on violations.
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
@@ -52,6 +65,8 @@ jobs:
       - name: Run Checkstyle
         run: mvn checkstyle:check -B
 
+  # Unit tests with JaCoCo coverage. needs: build ensures build succeeds first.
+  # Unit tests with JaCoCo coverage. needs: build ensures build ran first.
   test:
     name: 🧪 Test
     runs-on: ubuntu-latest
@@ -75,6 +90,7 @@ jobs:
           name: coverage-report
           path: target/site/jacoco/
 
+  # Build and push image. Runs only on main. cache GHA = GitHub Actions cache.
   docker:
     name: 🐳 Docker Build & Push
     runs-on: ubuntu-latest
@@ -103,6 +119,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Deploy to staging. environment: staging enables GitHub Environments.
+  # Replace echo with kubectl, Helm, or your deploy script.
   deploy:
     name: 🚀 Deploy
     runs-on: ubuntu-latest

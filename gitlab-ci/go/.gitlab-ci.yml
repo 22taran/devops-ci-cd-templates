@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# GitLab CI/CD Pipeline -- Go
+# Stages: build -> lint -> test -> docker -> deploy
+# Uses: CI_REGISTRY, CI_REGISTRY_USER, CI_REGISTRY_PASSWORD (auto-injected)
+# ---------------------------------------------------------------------------
+
 stages:
   - build
   - lint

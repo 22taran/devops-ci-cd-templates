@@ -1,8 +1,16 @@
+# ---------------------------------------------------------------------------
+# CircleCI Config -- Java (Maven)
+# Jobs: build -> lint, test (test needs build) -> docker-build -> deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD in CircleCI project env
+# ---------------------------------------------------------------------------
+
 version: 2.1
 
+# Docker orb provides docker/build, docker/push, docker/check
 orbs:
   docker: circleci/docker@2.4.0
 
+# Executor defines the Docker image for build/lint/test jobs
 executors:
   java:
     docker:

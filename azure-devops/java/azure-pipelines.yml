@@ -1,3 +1,21 @@
+# ---------------------------------------------------------------------------
+# Azure DevOps Pipeline -- Java (Maven)
+# Stages: Build -> Lint -> Test -> Docker -> Deploy
+# Requires: Docker registry service connection, variable groups
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Azure DevOps Pipeline -- Java (Maven)
+# Stages: Build -> Lint -> Test -> Docker -> Deploy
+# Requires: Docker registry service connection
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Azure DevOps Pipeline -- Java (Maven)
+# Stages: Build -> Lint -> Test -> Docker -> Deploy
+# Requires: Docker registry service connection
+# ---------------------------------------------------------------------------
+
 trigger:
   branches:
     include:

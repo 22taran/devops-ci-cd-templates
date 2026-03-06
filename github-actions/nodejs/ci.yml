@@ -1,16 +1,25 @@
+# ---------------------------------------------------------------------------
+# GitHub Actions Workflow -- Node.js
+# Jobs: Build -> Lint, Test (matrix 18/20/22) -> Docker -> Deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD secrets
+# ---------------------------------------------------------------------------
+
 name: Node.js CI/CD Pipeline
 
+# Trigger on push to main/develop and on PRs to main
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
 
+# Shared env. DOCKER_IMAGE: customize for your registry
 env:
   NODE_VERSION: '18'
   DOCKER_IMAGE: myregistry/nodejs-app
 
 jobs:
+  # npm ci for reproducible installs. cache speeds up subsequent runs.
   build:
     name: 🔨 Build & Install
     runs-on: ubuntu-latest
@@ -32,6 +41,7 @@ jobs:
           path: node_modules
           key: node-modules-${{ hashFiles('package-lock.json') }}
 
+  # ESLint checks style and catches bugs. needs: build for consistency.
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
@@ -51,6 +61,7 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+  # Matrix tests Node 18, 20, 22. --coverage --ci for CI-friendly output.
   test:
     name: 🧪 Test
     runs-on: ubuntu-latest
@@ -79,6 +90,7 @@ jobs:
           name: coverage-node-${{ matrix.node-version }}
           path: coverage/
 
+  # Build and push. Only on main. GHA cache = GitHub Actions layer cache.
   docker:
     name: 🐳 Docker Build & Push
     runs-on: ubuntu-latest
@@ -107,6 +119,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Deploy to staging. Replace with kubectl/Helm or your deploy script.
   deploy:
     name: 🚀 Deploy
     runs-on: ubuntu-latest

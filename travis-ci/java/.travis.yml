@@ -1,7 +1,26 @@
+# ---------------------------------------------------------------------------
+# Travis CI Pipeline -- Java (Maven)
+# Stages: build -> lint -> test -> docker -> deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD env vars in Travis settings
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Travis CI Pipeline -- Java (Maven)
+# Stages: build -> lint -> test -> docker -> deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD env vars in Travis settings
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Travis CI Pipeline -- Java (Maven)
+# Stages: build -> lint -> test -> docker -> deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD env vars
+# ---------------------------------------------------------------------------
+
 language: java
 jdk:
   - openjdk17
 
+# Cache Maven .m2 to speed up dependency resolution
 cache:
   directories:
     - $HOME/.m2

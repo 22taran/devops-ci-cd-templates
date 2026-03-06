@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# Bitbucket Pipelines -- Java (Maven)
+# Steps: Build -> Lint -> Test; on main: Docker Build & Push -> Deploy
+# Requires: DOCKER_USERNAME, DOCKER_PASSWORD repo variables
+# ---------------------------------------------------------------------------
+
 image: maven:3.9-eclipse-temurin-17
 
 pipelines:

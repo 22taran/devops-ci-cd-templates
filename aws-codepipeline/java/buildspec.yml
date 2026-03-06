@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# AWS CodeBuild buildspec -- Java (Maven)
+# Phases: install -> pre_build (lint, ECR login) -> build -> post_build
+# Requires: ECR repo, IAM role with ECR push, CODEBUILD_RESOLVED_SOURCE_VERSION
+# ---------------------------------------------------------------------------
+
 version: 0.2
 
 env:

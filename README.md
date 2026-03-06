@@ -3,16 +3,16 @@
 <div align="center">
 
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-Pipeline%20Reference-blue?style=for-the-badge&logo=githubactions)
-![Tools](https://img.shields.io/badge/Tools-10-green?style=for-the-badge)
+![Tools](https://img.shields.io/badge/Tools-9-green?style=for-the-badge)
 ![Tech Stacks](https://img.shields.io/badge/Tech%20Stacks-8-orange?style=for-the-badge)
 ![Pipelines](https://img.shields.io/badge/Pipelines-80%2B-red?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-**A comprehensive collection of CI/CD pipeline configurations across 10 popular DevOps tools and 8 tech stacks.**
+**A comprehensive collection of CI/CD pipeline configurations across 9 popular DevOps tools and 8 tech stacks.**
 
 *Production-ready templates with build, lint, test, Docker, and deploy stages.*
 
-[Jenkins](#jenkins) · [GitHub Actions](#github-actions) · [GitLab CI](#gitlab-ci) · [CircleCI](#circleci) · [Travis CI](#travis-ci) · [Azure DevOps](#azure-devops) · [Bitbucket Pipelines](#bitbucket-pipelines) · [ArgoCD](#argocd) · [Tekton](#tekton) · [AWS CodePipeline](#aws-codepipeline)
+[Jenkins](#jenkins) · [GitHub Actions](#github-actions) · [GitLab CI](#gitlab-ci) · [CircleCI](#circleci) · [Travis CI](#travis-ci) · [Azure DevOps](#azure-devops) · [Bitbucket Pipelines](#bitbucket-pipelines) · [ArgoCD](#argocd) · [AWS CodePipeline](#aws-codepipeline)
 
 </div>
 
@@ -20,16 +20,16 @@
 
 ## 📋 Coverage Matrix
 
-| Tech Stack | Jenkins | GitHub Actions | GitLab CI | CircleCI | Travis CI | Azure DevOps | Bitbucket | ArgoCD | Tekton | AWS CodePipeline |
-|:----------:|:-------:|:--------------:|:---------:|:--------:|:---------:|:------------:|:---------:|:------:|:------:|:----------------:|
-| ☕ Java     | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 🟢 Node.js | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 🐍 Python  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 🔵 Go      | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 🟣 .NET    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 💎 Ruby    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 🦀 Rust    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 🐘 PHP     | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tech Stack | Jenkins | GitHub Actions | GitLab CI | CircleCI | Travis CI | Azure DevOps | Bitbucket | ArgoCD | AWS CodePipeline |
+|:----------:|:-------:|:--------------:|:---------:|:--------:|:---------:|:------------:|:---------:|:------:|:----------------:|
+| ☕ Java     | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🟢 Node.js | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🐍 Python  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🔵 Go      | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🟣 .NET    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 💎 Ruby    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🦀 Rust    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🐘 PHP     | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -54,7 +54,6 @@
 ├── azure-devops/             # Azure Pipelines YAML
 ├── bitbucket-pipelines/      # Bitbucket pipeline configs
 ├── argocd/                   # ArgoCD Application manifests
-├── tekton/                   # Tekton Pipeline & Task CRDs
 └── aws-codepipeline/         # AWS CodeBuild buildspec files
 ```
 
@@ -64,10 +63,17 @@
 
 Every pipeline follows a consistent **5-stage pattern**:
 
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│  Build  │───▶│  Lint   │───▶│  Test   │───▶│ Docker  │───▶│ Deploy  │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘    └─────────┘
+```mermaid
+flowchart LR
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    lint --> test[Test]
+    test --> docker[Docker Build and Push]
+    docker --> deployCheck{Branch = main?}
+    deployCheck -->|Yes| deploy[Deploy to Staging]
+    deployCheck -->|No| skip[Skip Deploy]
+    deploy --> done[Done]
+    skip --> done
 ```
 
 | Stage    | Description                                     |
@@ -77,6 +83,22 @@ Every pipeline follows a consistent **5-stage pattern**:
 | **Test**    | Run unit tests with coverage reports           |
 | **Docker**  | Build & push Docker image                      |
 | **Deploy**  | Deploy to staging environment                  |
+
+---
+
+## 🛠️ Tool Comparison
+
+| Tool | Hosting | Best For | Key Features |
+|------|---------|----------|--------------|
+| **Jenkins** | Self-hosted or cloud | Enterprises, flexibility | Plugins, declarative pipelines, Docker agents |
+| **GitHub Actions** | SaaS (GitHub) | GitHub repos | Native integration, free for public repos, matrix builds |
+| **GitLab CI** | Self-hosted or GitLab.com | GitLab repos | Built-in registry, Docker-in-Docker, environments |
+| **CircleCI** | SaaS | Cloud-native teams | Orbs, remote Docker, parallelism |
+| **Travis CI** | SaaS | Open source | Simple config, GitHub integration |
+| **Azure DevOps** | SaaS (Microsoft) | Microsoft ecosystem | Approval gates, variable groups, service connections |
+| **Bitbucket Pipelines** | SaaS (Atlassian) | Bitbucket repos | Integrated with Jira, deployment environments |
+| **ArgoCD** | Self-hosted (K8s) | GitOps, Kubernetes | Declarative sync, multi-cluster, rollbacks |
+| **AWS CodePipeline** | SaaS (AWS) | AWS workloads | ECR, ECS, Lambda, CloudFormation integration |
 
 ---
 
@@ -106,9 +128,6 @@ Atlassian's integrated CI/CD with `bitbucket-pipelines.yml`. Built-in Docker sup
 ### ArgoCD
 Declarative GitOps continuous delivery for Kubernetes. Application manifests that sync with Git repositories.
 
-### Tekton
-Kubernetes-native CI/CD with Pipeline and Task CRDs. Cloud-native, vendor-neutral pipeline engine.
-
 ### AWS CodePipeline
 AWS-native CI/CD with CodeBuild `buildspec.yml`. Integrates with ECR, ECS, Lambda, and other AWS services.
 
@@ -118,8 +137,8 @@ AWS-native CI/CD with CodeBuild `buildspec.yml`. Integrates with ECR, ECS, Lambd
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/DevOps-CI-CD.git
-   cd DevOps-CI-CD
+   git clone https://github.com/22taran/devops-ci-cd-templates.git
+   cd devops-ci-cd-templates
    ```
 
 2. **Choose a tool and tech stack:**
@@ -131,6 +150,19 @@ AWS-native CI/CD with CodeBuild `buildspec.yml`. Integrates with ECR, ECS, Lambd
    - Modify test and build commands as needed
 
 4. **Reference the sample apps** in `sample-apps/` for the expected project structure.
+
+---
+
+## 🔧 Troubleshooting
+
+| Issue | Possible Cause | Solution |
+|-------|----------------|----------|
+| **Docker login failed** | Invalid credentials or wrong registry URL | Verify `DOCKER_USERNAME`, `DOCKER_PASSWORD` (or equivalent) in CI secrets. Use `docker login` locally to test. |
+| **Build timeout** | Slow dependency download or large project | Increase timeout in pipeline options. Enable caching (Maven `.m2`, npm, pip). |
+| **Out of memory** | Default runner memory too low | Use larger runners, split jobs, or reduce parallelism. |
+| **Lint/test fails locally but passes in CI** | Different versions or env | Pin versions in config (e.g., `package-lock.json`, `requirements.txt`). Use same Docker image locally. |
+| **Deploy stage skipped** | Branch filter | Deploy typically runs only on `main`. Push to main or adjust the `when`/`only`/`filters` condition. |
+| **ArgoCD out of sync** | Image tag mismatch or Git path wrong | Ensure CI pushes to the same image tag ArgoCD expects. Verify `repoURL` and `path` in Application manifest. |
 
 ---
 
@@ -146,7 +178,6 @@ AWS-native CI/CD with CodeBuild `buildspec.yml`. Integrates with ECR, ECS, Lambd
 | Azure DevOps | [learn.microsoft.com](https://learn.microsoft.com/en-us/azure/devops/pipelines/) |
 | Bitbucket | [support.atlassian.com](https://support.atlassian.com/bitbucket-cloud/docs/get-started-with-bitbucket-pipelines/) |
 | ArgoCD | [argo-cd.readthedocs.io](https://argo-cd.readthedocs.io/) |
-| Tekton | [tekton.dev/docs](https://tekton.dev/docs/) |
 | AWS CodePipeline | [docs.aws.amazon.com](https://docs.aws.amazon.com/codepipeline/) |
 
 ---
