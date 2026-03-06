@@ -1,10 +1,19 @@
+// ---------------------------------------------------------------------------
+// Jenkins Declarative Pipeline -- Ruby
+// Stages: Install -> Lint -> Test -> Docker Build & Push -> Deploy
+// Requires: Docker Pipeline plugin, docker-hub-credentials, deploy-credentials
+// ---------------------------------------------------------------------------
+
 pipeline {
+    // Ruby slim image for minimal footprint. BUNDLE_PATH caches gems
+    // in workspace to speed up subsequent installs.
     agent {
         docker {
             image 'ruby:3.3-slim'
         }
     }
 
+    // BUNDLE_PATH stores gems in workspace for faster bundle install.
     environment {
         DOCKER_IMAGE = 'myregistry/ruby-app'
         DOCKER_TAG   = "${env.BUILD_NUMBER}"
@@ -12,6 +21,7 @@ pipeline {
         BUNDLE_PATH  = "${WORKSPACE}/vendor/bundle"
     }
 
+    // Pipeline-wide options: 20 min timeout, no concurrent builds, keep last 10.
     options {
         timeout(time: 20, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -19,6 +29,7 @@ pipeline {
     }
 
     stages {
+        // Install gems from Gemfile.lock for reproducible builds.
         stage('Install') {
             steps {
                 echo '📦 Installing gems...'
@@ -26,6 +37,7 @@ pipeline {
             }
         }
 
+        // RuboCop enforces Ruby style guide. Fails build on violations.
         stage('Lint') {
             steps {
                 echo '🔍 Running RuboCop...'
@@ -33,6 +45,8 @@ pipeline {
             }
         }
 
+        // RSpec runs tests. --format documentation and html produce
+        // readable console output and HTML report for publishHTML.
         stage('Test') {
             steps {
                 echo '🧪 Running RSpec tests...'
@@ -49,6 +63,7 @@ pipeline {
             }
         }
 
+        // Build Docker image from project Dockerfile, push to registry.
         stage('Docker Build & Push') {
             steps {
                 echo '🐳 Building Docker image...'
@@ -62,6 +77,7 @@ pipeline {
             }
         }
 
+        // Deploy only on main. Replace with your deployment command.
         stage('Deploy') {
             when {
                 branch 'main'
@@ -70,12 +86,13 @@ pipeline {
                 echo "🚀 Deploying to ${DEPLOY_ENV}..."
                 sh """
                     echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
-                    // kubectl set image deployment/ruby-app ruby-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # kubectl set image deployment/ruby-app ruby-app=${DOCKER_IMAGE}:${DOCKER_TAG}
                 """
             }
         }
     }
 
+    // Post-build: notify on success/failure, always clean workspace.
     post {
         success {
             echo '✅ Pipeline completed successfully!'

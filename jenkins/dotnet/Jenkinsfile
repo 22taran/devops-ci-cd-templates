@@ -1,4 +1,12 @@
+// ---------------------------------------------------------------------------
+// Jenkins Declarative Pipeline -- .NET
+// Stages: Restore -> Build -> Lint -> Test -> Publish -> Docker Build & Push -> Deploy
+// Requires: Docker Pipeline plugin, docker-hub-credentials, deploy-credentials
+// ---------------------------------------------------------------------------
+
 pipeline {
+    // Microsoft .NET SDK image for building and testing. Includes runtime
+    // and SDK tools (dotnet CLI, MSBuild, test runners).
     agent {
         docker {
             image 'mcr.microsoft.com/dotnet/sdk:8.0'
@@ -11,6 +19,7 @@ pipeline {
         DEPLOY_ENV   = 'staging'
     }
 
+    // .NET builds can be slower; 30 min timeout. No concurrent builds, keep last 10.
     options {
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -18,6 +27,7 @@ pipeline {
     }
 
     stages {
+        // Restore NuGet packages. Separate stage allows caching in some setups.
         stage('Restore') {
             steps {
                 echo '📦 Restoring NuGet packages...'
@@ -25,6 +35,7 @@ pipeline {
             }
         }
 
+        // Compile without re-restoring. --no-restore uses packages from Restore stage.
         stage('Build') {
             steps {
                 echo '🔨 Building .NET application...'
@@ -32,6 +43,8 @@ pipeline {
             }
         }
 
+        // dotnet format checks code style. --verify-no-changes fails if
+        // formatting would change (enforces consistent style).
         stage('Lint') {
             steps {
                 echo '🔍 Running code analysis...'
@@ -39,6 +52,8 @@ pipeline {
             }
         }
 
+        // Run tests with code coverage. --no-build uses existing build.
+        // XPlat Code Coverage produces Cobertura XML for Jenkins.
         stage('Test') {
             steps {
                 echo '🧪 Running tests with coverage...'
@@ -55,6 +70,8 @@ pipeline {
             }
         }
 
+        // Publish produces deployable output in ./publish. archiveArtifacts
+        // stores it for download or downstream jobs.
         stage('Publish') {
             steps {
                 echo '📦 Publishing application...'
@@ -63,6 +80,7 @@ pipeline {
             }
         }
 
+        // Build Docker image from project Dockerfile, push to registry.
         stage('Docker Build & Push') {
             steps {
                 echo '🐳 Building Docker image...'
@@ -76,6 +94,7 @@ pipeline {
             }
         }
 
+        // Deploy only on main. Replace with your deployment command.
         stage('Deploy') {
             when {
                 branch 'main'
@@ -84,12 +103,13 @@ pipeline {
                 echo "🚀 Deploying to ${DEPLOY_ENV}..."
                 sh """
                     echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
-                    // kubectl set image deployment/dotnet-app dotnet-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # kubectl set image deployment/dotnet-app dotnet-app=${DOCKER_IMAGE}:${DOCKER_TAG}
                 """
             }
         }
     }
 
+    // Post-build: notify on success/failure, always clean workspace.
     post {
         success {
             echo '✅ Pipeline completed successfully!'

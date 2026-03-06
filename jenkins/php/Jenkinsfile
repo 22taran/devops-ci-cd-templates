@@ -1,10 +1,18 @@
+// ---------------------------------------------------------------------------
+// Jenkins Declarative Pipeline -- PHP
+// Stages: Install -> Lint -> Test -> Docker Build & Push -> Deploy
+// Requires: Docker Pipeline plugin, docker-hub-credentials, deploy-credentials
+// ---------------------------------------------------------------------------
+
 pipeline {
+    // PHP CLI image. COMPOSER_HOME in workspace caches Composer data.
     agent {
         docker {
             image 'php:8.2-cli'
         }
     }
 
+    // COMPOSER_HOME caches Composer packages and config in workspace.
     environment {
         DOCKER_IMAGE    = 'myregistry/php-app'
         DOCKER_TAG      = "${env.BUILD_NUMBER}"
@@ -12,6 +20,7 @@ pipeline {
         COMPOSER_HOME   = "${WORKSPACE}/.composer"
     }
 
+    // Pipeline-wide options: 20 min timeout, no concurrent builds, keep last 10.
     options {
         timeout(time: 20, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -19,6 +28,8 @@ pipeline {
     }
 
     stages {
+        // Install Composer if needed, then install deps from composer.lock.
+        // --no-interaction and --prefer-dist suit CI environments.
         stage('Install') {
             steps {
                 echo '📦 Installing Composer dependencies...'
@@ -29,6 +40,8 @@ pipeline {
             }
         }
 
+        // phpcs checks PSR-12 style. phpstan performs static analysis at
+        // level 5 (balance of strictness vs. noise).
         stage('Lint') {
             steps {
                 echo '🔍 Running PHP_CodeSniffer and PHPStan...'
@@ -39,6 +52,8 @@ pipeline {
             }
         }
 
+        // PHPUnit runs tests with coverage. coverage.xml (Clover) for
+        // Cobertura; coverage/ HTML for publishHTML.
         stage('Test') {
             steps {
                 echo '🧪 Running PHPUnit tests...'
@@ -56,6 +71,7 @@ pipeline {
             }
         }
 
+        // Build Docker image from project Dockerfile, push to registry.
         stage('Docker Build & Push') {
             steps {
                 echo '🐳 Building Docker image...'
@@ -69,6 +85,7 @@ pipeline {
             }
         }
 
+        // Deploy only on main. Replace with your deployment command.
         stage('Deploy') {
             when {
                 branch 'main'
@@ -77,12 +94,13 @@ pipeline {
                 echo "🚀 Deploying to ${DEPLOY_ENV}..."
                 sh """
                     echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
-                    // kubectl set image deployment/php-app php-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # kubectl set image deployment/php-app php-app=${DOCKER_IMAGE}:${DOCKER_TAG}
                 """
             }
         }
     }
 
+    // Post-build: notify on success/failure, always clean workspace.
     post {
         success {
             echo '✅ Pipeline completed successfully!'

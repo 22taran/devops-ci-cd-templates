@@ -1,10 +1,19 @@
+// ---------------------------------------------------------------------------
+// Jenkins Declarative Pipeline -- Rust
+// Stages: Build -> Lint -> Test -> Docker Build & Push -> Deploy
+// Requires: Docker Pipeline plugin, docker-hub-credentials, deploy-credentials
+// ---------------------------------------------------------------------------
+
 pipeline {
+    // Rust slim image. CARGO_HOME in workspace caches crates to speed
+    // up subsequent builds (rustup, cargo downloads).
     agent {
         docker {
             image 'rust:1.73-slim'
         }
     }
 
+    // CARGO_HOME caches cargo and rustup data in workspace.
     environment {
         DOCKER_IMAGE = 'myregistry/rust-app'
         DOCKER_TAG   = "${env.BUILD_NUMBER}"
@@ -12,6 +21,7 @@ pipeline {
         CARGO_HOME   = "${WORKSPACE}/.cargo"
     }
 
+    // Rust builds can be slow; 30 min timeout. No concurrent builds, keep last 10.
     options {
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -19,6 +29,7 @@ pipeline {
     }
 
     stages {
+        // Compile release binary. --release enables optimizations.
         stage('Build') {
             steps {
                 echo '🔨 Building Rust application...'
@@ -26,6 +37,9 @@ pipeline {
             }
         }
 
+        // clippy catches common mistakes; rustfmt checks formatting.
+        // rustup component add ensures tools are available. -D warnings
+        // treats clippy warnings as errors.
         stage('Lint') {
             steps {
                 echo '🔍 Running clippy and format check...'
@@ -37,6 +51,7 @@ pipeline {
             }
         }
 
+        // Run unit and integration tests. --verbose shows test names.
         stage('Test') {
             steps {
                 echo '🧪 Running tests...'
@@ -44,6 +59,7 @@ pipeline {
             }
         }
 
+        // Build Docker image from project Dockerfile, push to registry.
         stage('Docker Build & Push') {
             steps {
                 echo '🐳 Building Docker image...'
@@ -57,6 +73,7 @@ pipeline {
             }
         }
 
+        // Deploy only on main. Replace with your deployment command.
         stage('Deploy') {
             when {
                 branch 'main'
@@ -65,12 +82,13 @@ pipeline {
                 echo "🚀 Deploying to ${DEPLOY_ENV}..."
                 sh """
                     echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
-                    // kubectl set image deployment/rust-app rust-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # kubectl set image deployment/rust-app rust-app=${DOCKER_IMAGE}:${DOCKER_TAG}
                 """
             }
         }
     }
 
+    // Post-build: notify on success/failure, always clean workspace.
     post {
         success {
             echo '✅ Pipeline completed successfully!'
