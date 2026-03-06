@@ -18,15 +18,38 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 
 ## CI/CD Pipeline Diagram
 
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> dockerBuild[Docker Build]
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> post[Post: Cleanup]
+```
+                    [Git Push / PR]
+                    Jenkins: Pipeline from SCM, poll or webhook
+                              |
+                              v
+                         [Build]
+                    agent: docker image
+                    step: sh (mvn/npm/pip/go/dotnet)
+                              |
+                              v
+                         [Lint]
+                    step: sh (checkstyle/eslint/flake8/etc)
+                              |
+                              v
+                         [Test]
+                    junit, jacoco/cobertura, publishHTML
+                              |
+                              v
+                    [Docker Build]
+                    Docker Pipeline: docker.build()
+                              |
+                              v
+                    [Docker Push]
+                    docker.withRegistry + docker-hub-credentials
+                              |
+                              v
+                        [Deploy]
+                    sh: kubectl / helm / docker run
+                              |
+                              v
+                    [Post: Cleanup]
+                    post { cleanWs() } - Workspace Cleanup plugin
 ```
 
 ## Stage-by-Stage Explanation

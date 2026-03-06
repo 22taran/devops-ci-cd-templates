@@ -67,19 +67,6 @@ Every pipeline follows a consistent pattern. Below is the full CI/CD flow includ
   <img src="cicd-pipeline.svg" alt="CI/CD Pipeline Diagram" width="900"/>
 </p>
 
-**Simplified flow** (as implemented in templates):
-
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> dockerBuild[Docker Build]
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> post[Post: Cleanup]
-```
-
 | Stage         | Description                                     |
 |---------------|-------------------------------------------------|
 | **Build**     | Compile source code / install dependencies     |
