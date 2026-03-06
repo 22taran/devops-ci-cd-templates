@@ -18,38 +18,55 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 
 ## CI/CD Pipeline Diagram
 
-```
-                    [Git Push / PR]
-                    Jenkins: Pipeline from SCM, poll or webhook
-                              |
-                              v
-                         [Build]
-                    agent: docker image
-                    step: sh (mvn/npm/pip/go/dotnet)
-                              |
-                              v
-                         [Lint]
-                    step: sh (checkstyle/eslint/flake8/etc)
-                              |
-                              v
-                         [Test]
-                    junit, jacoco/cobertura, publishHTML
-                              |
-                              v
-                    [Docker Build]
-                    Docker Pipeline: docker.build()
-                              |
-                              v
-                    [Docker Push]
-                    docker.withRegistry + docker-hub-credentials
-                              |
-                              v
-                        [Deploy]
-                    sh: kubectl / helm / docker run
-                              |
-                              v
-                    [Post: Cleanup]
-                    post { cleanWs() } - Workspace Cleanup plugin
+<div align="center">
+
+<pre>
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Git Push / PR                                              │
+    │  Jenkins: Pipeline from SCM, poll or webhook                │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Build                                                      │
+    │  agent: docker image | step: sh (mvn/npm/pip/go/dotnet)     │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Lint                                                       │
+    │  step: sh (checkstyle/eslint/flake8/etc)                    │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Test                                                       │
+    │  junit, jacoco/cobertura, publishHTML                       │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Docker Build                                               │
+    │  Docker Pipeline: docker.build()                            │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Docker Push                                                │
+    │  docker.withRegistry + docker-hub-credentials               │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Deploy                                                     │
+    │  sh: kubectl / helm / docker run                             │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Post: Cleanup                                               │
+    │  post { cleanWs() } - Workspace Cleanup plugin               │
+    └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Stage-by-Stage Explanation
