@@ -30,6 +30,7 @@ phases:
       - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
       - docker push $ECR_REPO:latest
       - printf '[{"name":"python-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+      - echo "Deploy: Use CodePipeline deploy stage. Docker: docker run -d -p 8080:8080 $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION | K8s: kubectl set image deployment/python-app python-app=$ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION"
 
 artifacts:
   files:

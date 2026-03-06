@@ -13,47 +13,21 @@ GitHub-native CI/CD workflow configurations for 8 tech stacks.
 Each `ci.yml` workflow includes:
 - **Triggers**: Push to `main`/`develop`, pull requests to `main`
 - **Caching**: Language-specific dependency caching (Maven, npm, pip, etc.)
-- **5 jobs**: Build → Lint → Test → Docker → Deploy
+- **6 jobs**: Build → Lint → Test → Docker Build → Docker Push → Deploy
 - **Artifact uploads** for build outputs and coverage reports
 
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Triggers"]
-        push(["push: main, develop"])
-        pr(["pull_request: main"])
-    end
-
-    subgraph runner["🖥️ ubuntu-latest Runner"]
-        subgraph ci["⚙️ CI Jobs"]
-            build["🔨 Build\ncheckout → setup → install → compile"]
-            lint["🔍 Lint\nRuns in parallel after build"]
-            test["🧪 Test\nMatrix strategy · coverage upload"]
-        end
-
-        subgraph cd["🚀 CD Jobs"]
-            docker["🐳 Docker\nBuild & push · tag with SHA"]
-            gate{{"github.ref == main?"}}
-            deploy["☁️ Deploy\nkubectl / ECS / Helm"]
-            skip(["Skip"])
-        end
-    end
-
-    push --> build
-    pr --> build
-    build --> lint
-    build --> test
-    lint --> docker
-    test --> docker
-    docker --> gate
-    gate -->|Yes| deploy
-    gate -->|No| skip
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style runner fill:#161b22,stroke:#8b949e,color:#c9d1d9
-    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style cd fill:#2d333b,stroke:#f85149,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    build --> test[Test]
+    lint --> dockerBuild[Docker Build]
+    test --> dockerBuild
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> done[Done]
 ```
 
 ## Stage-by-Stage Explanation
@@ -64,8 +38,9 @@ flowchart TD
 | **Build** | Compile or install deps | setup-node/java/python/etc, install deps, compile. Uses `actions/cache` or built-in cache. | Uploaded artifacts (JAR, node_modules cache key) |
 | **Lint** | Static analysis | Runs in parallel with test. checkstyle, ESLint, flake8, go vet, etc. Fails workflow on violations. | — |
 | **Test** | Unit tests + coverage | Runs tests, uploads coverage as artifact. Some workflows use matrix for multi-version testing. | coverage-report artifact |
-| **Docker** | Containerize and push | Only on `main`. Docker Buildx, login, build-push with GHA cache. Tags: `sha` + `latest`. | Image in registry |
-| **Deploy** | Deploy to staging | Only on `main`, after docker. Uses `environment: staging`. Replace with kubectl/Helm/etc. | — |
+| **Docker Build** | Build image | Docker Buildx, build with `push: false` and `load: true`. Tags: `sha` + `latest`. | Image in local daemon |
+| **Docker Push** | Push to registry | Login, push image. Runs after build. | Image in registry |
+| **Deploy** | Deploy to staging | Runs every run. Supports Docker (docker run) or Kubernetes (kubectl/Helm). Replace with your deploy logic. | — |
 
 ## Tech Stacks
 

@@ -11,7 +11,7 @@ GitLab CI/CD pipeline configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
-- **Stages**: build → lint → test → docker → deploy
+- **Stages**: build → lint → test → docker (build + push) → deploy
 - **Docker images** per job for reproducible builds
 - **Caching** for dependency speedup (Maven, npm, pip, etc.)
 - **Artifacts** for build outputs and coverage reports
@@ -19,46 +19,17 @@ Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        push(["git push"])
-        mr(["Merge Request"])
-    end
-
-    subgraph stages["📋 GitLab CI Stages"]
-        subgraph s1["stage: build"]
-            build["🔨 Build\nCompile & cache deps"]
-        end
-        subgraph s2["stage: lint + test ‹parallel›"]
-            lint["🔍 Lint\nStatic analysis"]
-            test["🧪 Test\nUnit tests + coverage\nartifacts: reports/"]
-        end
-        subgraph s3["stage: docker"]
-            docker["🐳 Docker Build & Push\nDocker-in-Docker service"]
-        end
-        subgraph s4["stage: deploy"]
-            gate{{"rules: if $CI_COMMIT_BRANCH == main"}}
-            deploy["☁️ Deploy to Staging\nenvironment: staging"]
-            skip(["Skip"])
-        end
-    end
-
-    push --> build
-    mr --> build
-    build --> lint
-    build --> test
-    lint --> docker
+flowchart LR
+    trigger[Git Push / MR] --> build[Build]
+    build --> lint[Lint]
+    build --> test[Test]
+    lint --> docker[Docker Build and Push]
     test --> docker
-    docker --> gate
-    gate -->|Yes| deploy
-    gate -->|No| skip
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style stages fill:#161b22,stroke:#8b949e,color:#c9d1d9
-    style s1 fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style s2 fill:#2d333b,stroke:#d29922,color:#c9d1d9
-    style s3 fill:#2d333b,stroke:#a371f7,color:#c9d1d9
-    style s4 fill:#2d333b,stroke:#f85149,color:#c9d1d9
+    docker --> deployCheck{Branch = main?}
+    deployCheck -->|Yes| deploy[Deploy to Staging]
+    deployCheck -->|No| skip[Skip Deploy]
+    deploy --> done[Done]
+    skip --> done
 ```
 
 ## Stage-by-Stage Explanation
@@ -68,8 +39,8 @@ flowchart TD
 | **build** | Compile or install deps | Uses Docker image per stack. Maven compile, npm ci, pip install, etc. Caches deps for speed. | JAR, node_modules, publish/ |
 | **lint** | Static analysis | Runs in parallel with test. checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
 | **test** | Unit tests + coverage | Runs tests. JUnit/Cobertura reports, coverage extraction. Artifacts expire after 7 days. | surefire-reports, jacoco, coverage |
-| **docker** | Containerize and push | Docker-in-Docker (dind). Login to registry, build, push with commit SHA + latest. Only on main. | Image in registry |
-| **deploy** | Deploy to staging | Only on main. Often `when: manual` for approval. Replace echo with kubectl/Helm. | — |
+| **docker** | Containerize and push | Docker-in-Docker (dind). Build then push with commit SHA + latest. Runs every branch. | Image in registry |
+| **deploy** | Deploy to staging | Often `when: manual` for approval. Supports Docker or Kubernetes. Replace echo with kubectl/Helm. | — |
 
 ## Tech Stacks
 

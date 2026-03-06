@@ -5,33 +5,36 @@ pipelines:
     - step:
         name: Build & Lint
         script:
-          - go build -v ./...
+          - go build -v -o bin/app ./...
           - go vet ./...
 
     - step:
         name: Test
         script:
-          - go test -v -race ./...
+          - go test -v -race -coverprofile=coverage.out ./...
 
-  branches:
-    main:
-      - step:
-          name: Build & Test
-          script:
-            - go build -v -o bin/app ./...
-            - go test -v -race -coverprofile=coverage.out ./...
+    - step:
+        name: Docker Build
+        services:
+          - docker
+        script:
+          - docker build -t myregistry/go-app:$BITBUCKET_COMMIT -t myregistry/go-app:latest .
 
-      - step:
-          name: Docker Build & Push
-          services:
-            - docker
-          script:
-            - docker build -t myregistry/go-app:$BITBUCKET_COMMIT .
-            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-            - docker push myregistry/go-app:$BITBUCKET_COMMIT
+    - step:
+        name: Docker Push
+        services:
+          - docker
+        script:
+          - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+          - docker push myregistry/go-app:$BITBUCKET_COMMIT
+          - docker push myregistry/go-app:latest
 
-      - step:
-          name: Deploy
-          deployment: staging
-          script:
-            - echo "Deploying to staging"
+    - step:
+        name: Deploy
+        deployment: staging
+        script:
+          - echo "Deploying myregistry/go-app:$BITBUCKET_COMMIT to staging"
+          # Docker: docker run -d -p 8080:8080 myregistry/go-app:$BITBUCKET_COMMIT
+          # docker-compose up -d
+          # Kubernetes: kubectl set image deployment/go-app go-app=myregistry/go-app:$BITBUCKET_COMMIT
+          # helm upgrade --install go-app ./chart --set image.tag=$BITBUCKET_COMMIT

@@ -14,26 +14,26 @@ pipelines:
         script:
           - dotnet test --configuration Release
 
-  branches:
-    main:
-      - step:
-          name: Build & Test
-          script:
-            - dotnet restore
-            - dotnet build --configuration Release
-            - dotnet test --configuration Release
+    - step:
+        name: Docker Build
+        services:
+          - docker
+        script:
+          - docker build -t myregistry/dotnet-app:$BITBUCKET_COMMIT -t myregistry/dotnet-app:latest .
 
-      - step:
-          name: Docker Build & Push
-          services:
-            - docker
-          script:
-            - docker build -t myregistry/dotnet-app:$BITBUCKET_COMMIT .
-            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-            - docker push myregistry/dotnet-app:$BITBUCKET_COMMIT
+    - step:
+        name: Docker Push
+        services:
+          - docker
+        script:
+          - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+          - docker push myregistry/dotnet-app:$BITBUCKET_COMMIT
+          - docker push myregistry/dotnet-app:latest
 
-      - step:
-          name: Deploy
-          deployment: staging
-          script:
-            - echo "Deploying to staging"
+    - step:
+        name: Deploy
+        deployment: staging
+        script:
+          - echo "Deploying to staging"
+          - "# Docker: docker run -d -p 8080:8080 myregistry/dotnet-app:$BITBUCKET_COMMIT"
+          - "# Kubernetes: kubectl set image deployment/dotnet-app dotnet-app=myregistry/dotnet-app:$BITBUCKET_COMMIT"

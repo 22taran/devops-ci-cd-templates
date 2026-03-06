@@ -47,19 +47,26 @@ jobs:
       script: mvn test -B
 
     - stage: docker
-      name: "Docker Build & Push"
-      if: branch = main
+      name: "Docker Build"
+      services:
+        - docker
+      script:
+        - docker build -t myregistry/java-app:$TRAVIS_COMMIT -t myregistry/java-app:latest .
+
+    - stage: docker
+      name: "Docker Push"
       services:
         - docker
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - docker build -t myregistry/java-app:$TRAVIS_COMMIT .
-        - docker tag myregistry/java-app:$TRAVIS_COMMIT myregistry/java-app:latest
         - docker push myregistry/java-app:$TRAVIS_COMMIT
         - docker push myregistry/java-app:latest
 
     - stage: deploy
       name: "Deploy"
-      if: branch = main
       script:
         - echo "Deploying myregistry/java-app:$TRAVIS_COMMIT to staging"
+        # Docker: docker run -d -p 8080:8080 myregistry/java-app:$TRAVIS_COMMIT
+        # docker-compose up -d
+        # Kubernetes: kubectl set image deployment/java-app java-app=myregistry/java-app:$TRAVIS_COMMIT
+        # helm upgrade --install java-app ./chart --set image.tag=$TRAVIS_COMMIT

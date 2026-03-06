@@ -13,42 +13,19 @@ Travis CI configurations for 8 tech stacks.
 Each `.travis.yml` uses Travis stages with:
 - **Stages**: build → lint → test → docker → deploy
 - **Caching**: Maven, npm, pip, etc. for dependency speedup
-- **Conditional jobs**: docker and deploy only on `main` branch
+- **Stages**: build → lint → test → docker (Build + Push) → deploy on every branch
 
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        push(["push / PR"])
-    end
-
-    subgraph lifecycle["🔄 Travis CI Build Lifecycle"]
-        subgraph setup["📥 Setup"]
-            lang["language: java / node / python ..."]
-            cache["cache: maven / npm / pip"]
-        end
-        subgraph jobs["📋 Jobs (stages)"]
-            build["🔨 Build\ninstall + script phase"]
-            lint["🔍 Lint\nStage: lint"]
-            test["🧪 Test\nStage: test\nscript: mvn test / npm test"]
-            docker["🐳 Docker\nStage: docker\nservices: docker"]
-            gate{{"branch = main?"}}
-            deploy["☁️ Deploy\nStage: deploy\nprovider: script"]
-            skip(["Skip"])
-        end
-    end
-
-    push --> lang --> cache --> build
-    build --> lint --> test --> docker
-    docker --> gate
-    gate -->|Yes| deploy
-    gate -->|No| skip
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style lifecycle fill:#161b22,stroke:#8b949e,color:#c9d1d9
-    style setup fill:#2d333b,stroke:#d29922,color:#c9d1d9
-    style jobs fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    lint --> test[Test]
+    test --> dockerBuild[Docker Build]
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> done[Done]
 ```
 
 ## Stage-by-Stage Explanation
@@ -58,8 +35,8 @@ flowchart TD
 | **build** | Compile or install deps | Maven compile/package, npm ci, pip install, etc. Caches deps. | JAR, build artifacts |
 | **lint** | Static analysis | checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
 | **test** | Unit tests | Runs tests. Some configs publish coverage. | — |
-| **docker** | Containerize and push | Docker login, build, tag, push. Only on main. | Image in registry |
-| **deploy** | Deploy to staging | Only on main. Replace echo with kubectl/Helm. | — |
+| **docker** | Build and push image | Docker login, build, tag, push. Runs on every branch. | Image in registry |
+| **deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace echo with kubectl/Helm/docker run. | — |
 
 ## Tech Stacks
 

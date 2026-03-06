@@ -27,6 +27,7 @@ phases:
     commands:
       - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
       - printf '[{"name":"ruby-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+      - echo "Deploy: Use CodePipeline deploy stage. Docker: docker run -d -p 8080:8080 $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION | K8s: kubectl set image deployment/ruby-app ruby-app=$ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION"
 
 artifacts:
   files:

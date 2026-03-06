@@ -18,31 +18,29 @@ pipelines:
           - bundle install
           - bundle exec rspec
 
-  branches:
-    main:
-      - step:
-          name: Lint & Test
-          caches:
-            - bundler
-          script:
-            - bundle install
-            - bundle exec rubocop
-            - bundle exec rspec
+    - step:
+        name: Docker Build
+        services:
+          - docker
+        script:
+          - docker build -t myregistry/ruby-app:$BITBUCKET_COMMIT -t myregistry/ruby-app:latest .
 
-      - step:
-          name: Docker Build & Push
-          services:
-            - docker
-          script:
-            - docker build -t myregistry/ruby-app:$BITBUCKET_COMMIT .
-            - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-            - docker push myregistry/ruby-app:$BITBUCKET_COMMIT
+    - step:
+        name: Docker Push
+        services:
+          - docker
+        script:
+          - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+          - docker push myregistry/ruby-app:$BITBUCKET_COMMIT
+          - docker push myregistry/ruby-app:latest
 
-      - step:
-          name: Deploy
-          deployment: staging
-          script:
-            - echo "Deploying to staging"
+    - step:
+        name: Deploy
+        deployment: staging
+        script:
+          - echo "Deploying to staging"
+          - "# Docker: docker run -d -p 8080:8080 myregistry/ruby-app:$BITBUCKET_COMMIT"
+          - "# Kubernetes: kubectl set image deployment/ruby-app ruby-app=myregistry/ruby-app:$BITBUCKET_COMMIT"
 
 definitions:
   caches:

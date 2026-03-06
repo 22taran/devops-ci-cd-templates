@@ -23,13 +23,24 @@ jobs:
       script: dotnet test --configuration Release
 
     - stage: docker
-      if: branch = main
+      name: "Docker Build"
+      services: docker
+      script:
+        - docker build -t myregistry/dotnet-app:$TRAVIS_COMMIT -t myregistry/dotnet-app:latest .
+
+    - stage: docker
+      name: "Docker Push"
       services: docker
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - docker build -t myregistry/dotnet-app:$TRAVIS_COMMIT .
         - docker push myregistry/dotnet-app:$TRAVIS_COMMIT
+        - docker push myregistry/dotnet-app:latest
 
     - stage: deploy
-      if: branch = main
-      script: echo "Deploying to staging"
+      name: "Deploy"
+      script:
+        - echo "Deploying myregistry/dotnet-app:$TRAVIS_COMMIT to staging"
+        - "# Docker: docker run -d -p 8080:8080 myregistry/dotnet-app:$TRAVIS_COMMIT"
+        - "# docker-compose up -d"
+        - "# Kubernetes: kubectl set image deployment/dotnet-app dotnet-app=myregistry/dotnet-app:$TRAVIS_COMMIT"
+        - "# helm upgrade --install dotnet-app ./chart --set image.tag=$TRAVIS_COMMIT"

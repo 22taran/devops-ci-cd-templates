@@ -25,17 +25,26 @@ jobs:
       script: pytest tests/ -v --cov=. --cov-report=html
 
     - stage: docker
-      name: "Docker Build & Push"
-      if: branch = main
+      name: "Docker Build"
+      services:
+        - docker
+      script:
+        - docker build -t myregistry/python-app:$TRAVIS_COMMIT -t myregistry/python-app:latest .
+
+    - stage: docker
+      name: "Docker Push"
       services:
         - docker
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - docker build -t myregistry/python-app:$TRAVIS_COMMIT .
         - docker push myregistry/python-app:$TRAVIS_COMMIT
+        - docker push myregistry/python-app:latest
 
     - stage: deploy
       name: "Deploy"
-      if: branch = main
       script:
-        - echo "Deploying to staging"
+        - echo "Deploying myregistry/python-app:$TRAVIS_COMMIT to staging"
+        - "# Docker: docker run -d -p 8080:8080 myregistry/python-app:$TRAVIS_COMMIT"
+        - "# docker-compose up -d"
+        - "# Kubernetes: kubectl set image deployment/python-app python-app=myregistry/python-app:$TRAVIS_COMMIT"
+        - "# helm upgrade --install python-app ./chart --set image.tag=$TRAVIS_COMMIT"

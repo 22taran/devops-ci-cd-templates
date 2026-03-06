@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Jenkins Declarative Pipeline -- Java (Maven)
-// Stages: Build -> Lint -> Test -> Package -> Docker Build & Push -> Deploy
+// Stages: Build -> Lint -> Test -> Package -> Docker Build -> Docker Push -> Deploy
 // Requires: Docker Pipeline plugin, docker-hub-credentials, deploy-credentials
 // ---------------------------------------------------------------------------
 
@@ -76,14 +76,24 @@ pipeline {
             }
         }
 
-        // Build Docker image from project Dockerfile, authenticate to
-        // Docker Hub, push with build number and latest tags.
-        stage('Docker Build & Push') {
+        // Build Docker image from project Dockerfile. Image stays in local
+        // daemon for the Push stage (same agent = same node).
+        stage('Docker Build') {
             steps {
                 echo '🐳 Building Docker image...'
                 script {
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                }
+            }
+        }
+
+        // Push image to registry. Requires image from Docker Build stage.
+        stage('Docker Push') {
+            steps {
+                echo '🐳 Pushing Docker image...'
+                script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
-                        def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        def image = docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}")
                         image.push()
                         image.push('latest')
                     }
@@ -91,17 +101,18 @@ pipeline {
             }
         }
 
-        // Deploy only when building main branch. Replace the echo with
-        // your actual deployment (kubectl, Helm, SSH, etc.).
+        // Deploy runs on every branch. Replace with your deployment command.
+        // Docker: docker run -d -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+        // Kubernetes: kubectl set image deployment/java-app java-app=${DOCKER_IMAGE}:${DOCKER_TAG}
         stage('Deploy') {
-            when {
-                branch 'main'
-            }
             steps {
                 echo "🚀 Deploying to ${DEPLOY_ENV}..."
                 sh """
                     echo "Deploying ${DOCKER_IMAGE}:${DOCKER_TAG} to ${DEPLOY_ENV}"
-                    # kubectl set image deployment/java-app java-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # Docker: docker run -d -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # docker-compose up -d
+                    # Kubernetes: kubectl set image deployment/java-app java-app=${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # helm upgrade --install java-app ./chart --set image.tag=${DOCKER_TAG}
                 """
             }
         }

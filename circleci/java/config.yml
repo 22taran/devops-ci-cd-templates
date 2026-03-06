@@ -91,6 +91,10 @@ jobs:
           name: Deploy to staging
           command: |
             echo "Deploying myregistry/java-app:${CIRCLE_SHA1} to staging"
+            # Docker: docker run -d -p 8080:8080 myregistry/java-app:${CIRCLE_SHA1}
+            # docker-compose up -d
+            # Kubernetes: kubectl set image deployment/java-app java-app=myregistry/java-app:${CIRCLE_SHA1}
+            # helm upgrade --install java-app ./chart --set image.tag=${CIRCLE_SHA1}
 
 workflows:
   build-test-deploy:
@@ -104,12 +108,6 @@ workflows:
           requires:
             - lint
             - test
-          filters:
-            branches:
-              only: main
       - deploy:
           requires:
             - docker-build
-          filters:
-            branches:
-              only: main

@@ -11,39 +11,20 @@ Bitbucket Pipelines configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `bitbucket-pipelines.yml` uses Bitbucket's native syntax with:
-- **Steps**: Sequential steps with caches and artifacts
-- **Branches**: `default` for PRs, `main` for full pipeline including Docker and deploy
+- **Steps**: Build, Lint, Test, Docker Build, Docker Push, Deploy (runs on all branches)
 - **Deployment**: `deployment: staging` for environment tracking
 
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        push(["push to any branch"])
-    end
-
-    subgraph default_pipe["📋 pipelines: default"]
-        subgraph steps["Step-by-step execution"]
-            build["🔨 Step 1 — Build\nimage: maven / node / python\nCaches: maven, node, pip"]
-            lint["🔍 Step 2 — Lint\nCheckstyle / ESLint / flake8"]
-            test["🧪 Step 3 — Test\nUnit tests + coverage"]
-        end
-    end
-
-    subgraph branch_pipe["🌿 pipelines: branches: main"]
-        docker["🐳 Step — Docker Build & Push\nservices:\n  - docker"]
-        deploy["☁️ Step — Deploy\ndeployment: staging\npipe: atlassian/kubectl-run"]
-    end
-
-    push --> build --> lint --> test
-    test -->|main only| docker --> deploy
-    test -->|other branches| done(["Done"])
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style default_pipe fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style steps fill:#161b22,stroke:#8b949e,color:#c9d1d9
-    style branch_pipe fill:#2d333b,stroke:#f85149,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    lint --> test[Test]
+    test --> dockerBuild[Docker Build]
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> done[Done]
 ```
 
 ## Stage-by-Stage Explanation
@@ -53,8 +34,9 @@ flowchart TD
 | **Build** | Compile or install deps | Maven, npm, pip, etc. Uses caches. | target/*.jar, node_modules |
 | **Lint** | Static analysis | checkstyle, ESLint, flake8, etc. Fails on violations. | — |
 | **Test** | Unit tests | Runs tests. Some configs store coverage. | — |
-| **Docker Build & Push** | Containerize and push | Only on main. Docker build, login, push. | Image in registry |
-| **Deploy** | Deploy to staging | Only on main. deployment: staging. Replace with kubectl/Helm. | — |
+| **Docker Build** | Build image | Docker build with tag. | Image in local daemon |
+| **Docker Push** | Push to registry | Docker login, push. | Image in registry |
+| **Deploy** | Deploy | deployment: staging. Docker: docker run / docker-compose. Kubernetes: kubectl / Helm. | — |
 
 ## Tech Stacks
 

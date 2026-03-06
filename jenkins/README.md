@@ -12,51 +12,21 @@ Declarative Jenkins pipeline configurations for 8 tech stacks.
 
 Each `Jenkinsfile` uses declarative pipeline syntax with:
 - **Docker-based agents** for consistent builds
-- **5 stages**: Build → Lint → Test → Docker → Deploy
+- **6 stages**: Build → Lint → Test → Docker Build → Docker Push → Deploy
 - **Post-build actions** for cleanup and notifications
 - **Environment variables** for configuration
 
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        scm(["SCM Poll / Webhook"])
-    end
-
-    subgraph agent["🐳 Docker Agent"]
-        img["maven / node / python / go ..."]
-    end
-
-    subgraph pipeline["📋 Declarative Pipeline Stages"]
-        build["🔨 Build\nCompile & install deps"]
-        lint["🔍 Lint\nCheckstyle, ESLint, flake8 ..."]
-        test["🧪 Test\nUnit tests + coverage report"]
-        pkg["📦 Package\nJAR / binary / bundle"]
-        docker["🐳 Docker Build & Push\nCredentials via withCredentials"]
-        gate{{"Branch = main?"}}
-        deploy["☁️ Deploy\nkubectl / helm / ssh"]
-        skip(["Skip"])
-    end
-
-    subgraph post["🏁 Post Actions"]
-        success["✅ success: notify"]
-        failure["❌ failure: alert"]
-        always["🧹 always: cleanWs"]
-    end
-
-    scm --> img --> build
-    build --> lint --> test --> pkg --> docker
-    docker --> gate
-    gate -->|Yes| deploy --> success
-    gate -->|No| skip --> always
-    deploy --> failure
-    deploy --> always
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style agent fill:#1a1f29,stroke:#d29922,color:#c9d1d9
-    style pipeline fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style post fill:#2d333b,stroke:#8b949e,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    lint --> test[Test]
+    test --> dockerBuild[Docker Build]
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> post[Post: Cleanup]
 ```
 
 ## Stage-by-Stage Explanation
@@ -70,8 +40,9 @@ flowchart TD
 | **Lint** | Static analysis | checkstyle, ESLint, flake8, go vet/staticcheck, dotnet format, RuboCop, clippy/rustfmt, phpcs/phpstan. Fails build on style or quality violations. | — |
 | **Test** | Unit tests + coverage | Run tests with coverage. Publish JUnit, Cobertura, or HTML reports to Jenkins. | Test reports, coverage data |
 | **Package / Publish** | (Java, .NET only) | Create deployable JAR or publish output. Archive artifacts for later use. | JAR, publish folder |
-| **Docker Build & Push** | Containerize and push | Build Docker image from project Dockerfile, authenticate to registry, push with build number and `latest` tags. | Image in registry |
-| **Deploy** | Deploy to staging | Runs only on `main` branch. Placeholder for `kubectl`, Helm, or custom deploy scripts. Replace with your deployment logic. | — |
+| **Docker Build** | Build image | Build Docker image from project Dockerfile. Image stays in local daemon for Push stage. | Image in local daemon |
+| **Docker Push** | Push to registry | Authenticate to registry, push image with build number and `latest` tags. | Image in registry |
+| **Deploy** | Deploy to staging | Runs on every branch. Supports Docker (`docker run`, `docker-compose`) or Kubernetes (`kubectl`, Helm). Replace placeholder with your deployment logic. | — |
 | **Post Actions** | Cleanup and notify | On success/failure: echo status. Always: `cleanWs()` to free disk. | Clean workspace |
 
 ## Tech Stacks

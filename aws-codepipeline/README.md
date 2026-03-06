@@ -20,42 +20,12 @@ Each `buildspec.yml` defines CodeBuild phases:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 CodePipeline Source"]
-        src(["S3 / CodeCommit / GitHub"])
-    end
-
-    subgraph codebuild["🏗️ AWS CodeBuild — buildspec.yml"]
-        subgraph ph1["phase: install"]
-            runtime["📥 Install runtime\njava, node, python, go ..."]
-        end
-        subgraph ph2["phase: pre_build"]
-            lint["🔍 Lint / Static Analysis"]
-            ecr_login["🔑 ECR Login\naws ecr get-login-password"]
-        end
-        subgraph ph3["phase: build"]
-            compile["🔨 Compile & Test"]
-            docker["🐳 Docker Build\ntag with CODEBUILD_RESOLVED_SOURCE_VERSION"]
-        end
-        subgraph ph4["phase: post_build"]
-            push_img["📤 Push Image to ECR"]
-            imgdef["📝 imagedefinitions.json\nfor ECS / CodeDeploy"]
-        end
-    end
-
-    subgraph deploy_stage["🚀 CodePipeline Deploy"]
-        ecs["☁️ ECS / EKS / Lambda"]
-    end
-
-    src --> runtime --> lint --> ecr_login --> compile --> docker --> push_img --> imgdef --> ecs
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style codebuild fill:#161b22,stroke:#d29922,color:#c9d1d9
-    style ph1 fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style ph2 fill:#2d333b,stroke:#a371f7,color:#c9d1d9
-    style ph3 fill:#2d333b,stroke:#d29922,color:#c9d1d9
-    style ph4 fill:#2d333b,stroke:#f85149,color:#c9d1d9
-    style deploy_stage fill:#2d333b,stroke:#f85149,color:#c9d1d9
+flowchart LR
+    trigger[CodePipeline Trigger] --> install[Install Runtime]
+    install --> prebuild[Pre-build: Lint, ECR Login]
+    prebuild --> build[Build: Compile, Test, Docker Build]
+    build --> postbuild[Post-build: Push Image]
+    postbuild --> deploy[Deploy via CodePipeline]
 ```
 
 ## Phase-by-Phase Explanation

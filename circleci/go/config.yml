@@ -61,7 +61,12 @@ jobs:
     docker:
       - image: cimg/base:stable
     steps:
-      - run: echo "Deploying to staging"
+      - run: |
+          echo "Deploying myregistry/go-app:${CIRCLE_SHA1} to staging"
+          # Docker: docker run -d -p 8080:8080 myregistry/go-app:${CIRCLE_SHA1}
+          # docker-compose up -d
+          # Kubernetes: kubectl set image deployment/go-app go-app=myregistry/go-app:${CIRCLE_SHA1}
+          # helm upgrade --install go-app ./chart --set image.tag=${CIRCLE_SHA1}
 
 workflows:
   build-test-deploy:
@@ -72,11 +77,5 @@ workflows:
           requires: [build]
       - docker-build:
           requires: [lint, test]
-          filters:
-            branches:
-              only: main
       - deploy:
           requires: [docker-build]
-          filters:
-            branches:
-              only: main

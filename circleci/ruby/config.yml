@@ -57,11 +57,5 @@ workflows:
           requires: [build]
       - docker-build:
           requires: [lint, test]
-          filters:
-            branches:
-              only: main
       - deploy:
           requires: [docker-build]
-          filters:
-            branches:
-              only: main

@@ -24,14 +24,18 @@ jobs:
       script: go test -v -race -coverprofile=coverage.out ./...
 
     - stage: docker
-      if: branch = main
       services:
         - docker
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - docker build -t myregistry/go-app:$TRAVIS_COMMIT .
+        - docker build -t myregistry/go-app:$TRAVIS_COMMIT -t myregistry/go-app:latest .
         - docker push myregistry/go-app:$TRAVIS_COMMIT
+        - docker push myregistry/go-app:latest
 
     - stage: deploy
-      if: branch = main
-      script: echo "Deploying to staging"
+      script: |
+        echo "Deploying myregistry/go-app:$TRAVIS_COMMIT to staging"
+        # Docker: docker run -d -p 8080:8080 myregistry/go-app:$TRAVIS_COMMIT
+        # docker-compose up -d
+        # Kubernetes: kubectl set image deployment/go-app go-app=myregistry/go-app:$TRAVIS_COMMIT
+        # helm upgrade --install go-app ./chart --set image.tag=$TRAVIS_COMMIT

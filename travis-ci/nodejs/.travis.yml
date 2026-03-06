@@ -32,17 +32,26 @@ jobs:
         - npm test -- --coverage --ci
 
     - stage: docker
-      name: "Docker Build & Push"
-      if: branch = main
+      name: "Docker Build"
+      services:
+        - docker
+      script:
+        - docker build -t myregistry/nodejs-app:$TRAVIS_COMMIT -t myregistry/nodejs-app:latest .
+
+    - stage: docker
+      name: "Docker Push"
       services:
         - docker
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - docker build -t myregistry/nodejs-app:$TRAVIS_COMMIT .
         - docker push myregistry/nodejs-app:$TRAVIS_COMMIT
+        - docker push myregistry/nodejs-app:latest
 
     - stage: deploy
       name: "Deploy"
-      if: branch = main
       script:
-        - echo "Deploying to staging"
+        - echo "Deploying myregistry/nodejs-app:$TRAVIS_COMMIT to staging"
+        - "# Docker: docker run -d -p 8080:8080 myregistry/nodejs-app:$TRAVIS_COMMIT"
+        - "# docker-compose up -d"
+        - "# Kubernetes: kubectl set image deployment/nodejs-app nodejs-app=myregistry/nodejs-app:$TRAVIS_COMMIT"
+        - "# helm upgrade --install nodejs-app ./chart --set image.tag=$TRAVIS_COMMIT"

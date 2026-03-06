@@ -18,46 +18,15 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        push(["push / PR to main"])
-    end
-
-    subgraph orbs["🔮 Orbs"]
-        docker_orb["circleci/docker"]
-        node_orb["circleci/node\nor language orb"]
-    end
-
-    subgraph workflow["🔄 Workflow: build-test-deploy"]
-        subgraph ci["⚙️ CI"]
-            build["🔨 build\nExecutor: docker image\nCheckout → install → compile"]
-            lint["🔍 lint\nParallel with test"]
-            test["🧪 test\nParallel with lint\nStore test results"]
-        end
-        subgraph cd["🚀 CD"]
-            docker["🐳 docker-build-push\nRemote Docker executor\nOrb command: build & push"]
-            gate{{"filters: branch = main"}}
-            deploy["☁️ deploy\nkubectl / helm / ssh"]
-            skip(["Skip"])
-        end
-    end
-
-    push --> build
-    docker_orb -.-> docker
-    node_orb -.-> build
-    build --> lint
-    build --> test
-    lint --> docker
-    test --> docker
-    docker --> gate
-    gate -->|Yes| deploy
-    gate -->|No| skip
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style orbs fill:#1a1f29,stroke:#a371f7,color:#c9d1d9
-    style workflow fill:#161b22,stroke:#8b949e,color:#c9d1d9
-    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style cd fill:#2d333b,stroke:#f85149,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    build --> test[Test]
+    lint --> dockerBuild[Docker Build]
+    test --> dockerBuild
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> done[Done]
 ```
 
 ## Stage-by-Stage Explanation
@@ -67,8 +36,8 @@ flowchart TD
 | **build** | Compile or install deps | checkout, restore_cache, run build commands, save_cache, persist_to_workspace | Workspace: target/, node_modules, etc. |
 | **lint** | Static analysis | restore_cache, run lint (checkstyle, eslint, etc.) | — |
 | **test** | Unit tests + coverage | restore_cache, run tests, store_test_results, store_artifacts | JUnit XML, coverage reports |
-| **docker-build** | Containerize and push | setup_remote_docker, docker orb build/push. Only on main. | Image in registry |
-| **deploy** | Deploy to staging | Only on main. Replace echo with kubectl/Helm. | — |
+| **docker-build** | Build and push image | setup_remote_docker, docker orb build + push. Runs on every branch. | Image in registry |
+| **deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace echo with kubectl/Helm/docker run. | — |
 
 ## Tech Stacks
 

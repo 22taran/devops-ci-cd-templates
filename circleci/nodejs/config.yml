@@ -63,7 +63,12 @@ jobs:
     steps:
       - run:
           name: Deploy to staging
-          command: echo "Deploying to staging"
+          command: |
+            echo "Deploying myregistry/nodejs-app:${CIRCLE_SHA1} to staging"
+            # Docker: docker run -d -p 8080:8080 myregistry/nodejs-app:${CIRCLE_SHA1}
+            # docker-compose up -d
+            # Kubernetes: kubectl set image deployment/nodejs-app nodejs-app=myregistry/nodejs-app:${CIRCLE_SHA1}
+            # helm upgrade --install nodejs-app ./chart --set image.tag=${CIRCLE_SHA1}
 
 workflows:
   build-test-deploy:
@@ -75,11 +80,5 @@ workflows:
           requires: [build]
       - docker-build:
           requires: [lint, test]
-          filters:
-            branches:
-              only: main
       - deploy:
           requires: [docker-build]
-          filters:
-            branches:
-              only: main

@@ -78,24 +78,32 @@ stages:
   - stage: Docker
     displayName: '🐳 Docker'
     dependsOn: [Lint, Test]
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
       - job: Docker
         steps:
           - task: Docker@2
+            displayName: 'Build image'
             inputs:
               containerRegistry: 'docker-hub-connection'
               repository: $(DOCKER_IMAGE)
-              command: 'buildAndPush'
+              command: 'build'
               Dockerfile: 'Dockerfile'
+              tags: |
+                $(Build.BuildId)
+                latest
+          - task: Docker@2
+            displayName: 'Push image'
+            inputs:
+              containerRegistry: 'docker-hub-connection'
+              repository: $(DOCKER_IMAGE)
+              command: 'push'
               tags: |
                 $(Build.BuildId)
                 latest
 
   - stage: Deploy
     displayName: '🚀 Deploy'
-    dependsOn: Docker
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    dependsOn: DockerPush
     jobs:
       - deployment: Deploy
         environment: staging
@@ -103,4 +111,9 @@ stages:
           runOnce:
             deploy:
               steps:
-                - script: echo "Deploying $(DOCKER_IMAGE):$(Build.BuildId) to staging"
+                - script: |
+                    echo "Deploying $(DOCKER_IMAGE):$(Build.BuildId) to staging"
+                    # Docker: docker run -d -p 8080:8080 $(DOCKER_IMAGE):$(Build.BuildId)
+                    # docker-compose up -d
+                    # Kubernetes: kubectl set image deployment/java-app java-app=$(DOCKER_IMAGE):$(Build.BuildId)
+                    # helm upgrade --install java-app ./chart --set image.tag=$(Build.BuildId)

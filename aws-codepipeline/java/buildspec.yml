@@ -42,6 +42,9 @@ phases:
       - docker push $ECR_REPO:latest
       - echo "Creating imagedefinitions.json..."
       - printf '[{"name":"java-app","imageUri":"%s"}]' $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+      - echo "Deploy: Use CodePipeline deploy stage or:"
+      - echo "# Docker: docker run -d -p 8080:8080 $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+      - echo "# Kubernetes: kubectl set image deployment/java-app java-app=$ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION"
 
 artifacts:
   files:

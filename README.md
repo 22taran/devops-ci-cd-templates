@@ -61,55 +61,27 @@
 
 ## 🔄 Pipeline Stages
 
-Every pipeline follows a consistent **5-stage pattern**:
+Every pipeline follows a consistent **6-stage pattern**:
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        push(["git push"])
-        pr(["Pull Request"])
-    end
-
-    subgraph ci["⚙️ Continuous Integration"]
-        build["🔨 Build\nCompile & Install Deps"]
-        direction LR
-        lint["🔍 Lint\nStatic Analysis"]
-        test["🧪 Test\nUnit Tests & Coverage"]
-    end
-
-    subgraph package["📦 Package"]
-        docker["🐳 Docker Build & Push\nTag with commit SHA"]
-    end
-
-    subgraph cd["🚀 Continuous Delivery"]
-        gate{{"Branch = main?"}}
-        deploy["☁️ Deploy to Staging\nKubernetes / ECS / VM"]
-        skip(["Skip Deploy"])
-    end
-
-    push --> build
-    pr --> build
-    build --> lint
-    build --> test
-    lint --> docker
-    test --> docker
-    docker --> gate
-    gate -->|Yes| deploy
-    gate -->|No| skip
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style package fill:#2d333b,stroke:#d29922,color:#c9d1d9
-    style cd fill:#2d333b,stroke:#f85149,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    lint --> test[Test]
+    test --> dockerBuild[Docker Build]
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> post[Post: Cleanup]
 ```
 
-| Stage    | Description                                     |
-|----------|-------------------------------------------------|
-| **Build**   | Compile source code / install dependencies     |
-| **Lint**    | Static code analysis & style checks            |
-| **Test**    | Run unit tests with coverage reports           |
-| **Docker**  | Build & push Docker image                      |
-| **Deploy**  | Deploy to staging environment                  |
+| Stage         | Description                                     |
+|---------------|-------------------------------------------------|
+| **Build**     | Compile source code / install dependencies     |
+| **Lint**      | Static code analysis & style checks            |
+| **Test**      | Run unit tests with coverage reports           |
+| **Docker Build** | Build Docker image from Dockerfile          |
+| **Docker Push**  | Push image to registry                        |
+| **Deploy**    | Deploy to staging (Docker or Kubernetes)       |
 
 ---
 
@@ -188,7 +160,7 @@ AWS-native CI/CD with CodeBuild `buildspec.yml`. Integrates with ECR, ECS, Lambd
 | **Build timeout** | Slow dependency download or large project | Increase timeout in pipeline options. Enable caching (Maven `.m2`, npm, pip). |
 | **Out of memory** | Default runner memory too low | Use larger runners, split jobs, or reduce parallelism. |
 | **Lint/test fails locally but passes in CI** | Different versions or env | Pin versions in config (e.g., `package-lock.json`, `requirements.txt`). Use same Docker image locally. |
-| **Deploy stage skipped** | Branch filter | Deploy typically runs only on `main`. Push to main or adjust the `when`/`only`/`filters` condition. |
+| **Deploy stage skipped** | Pipeline config | Deploy runs on every branch. Check pipeline dependencies and that Docker Build/Push completed. |
 | **ArgoCD out of sync** | Image tag mismatch or Git path wrong | Ensure CI pushes to the same image tag ArgoCD expects. Verify `repoURL` and `path` in Application manifest. |
 
 ---

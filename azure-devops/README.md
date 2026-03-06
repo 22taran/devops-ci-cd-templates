@@ -19,40 +19,14 @@ Each `azure-pipelines.yml` uses multi-stage pipelines with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart TD
-    subgraph trigger["🔔 Trigger"]
-        push(["push: main, develop"])
-        pr(["pr: main"])
-    end
-
-    subgraph pool["🖥️ vmImage: ubuntu-latest"]
-        subgraph ci["⚙️ Stage: CI"]
-            build["🔨 Build\nTask: Maven / DotNetCoreCLI / script"]
-            lint["🔍 Lint\nCheckstyle / ESLint / flake8"]
-            test["🧪 Test\nPublishTestResults + CodeCoverage"]
-        end
-        subgraph pkg["📦 Stage: Package"]
-            docker["🐳 Docker@2\nBuild & push to ACR / Docker Hub"]
-        end
-        subgraph cd["🚀 Stage: Deploy"]
-            gate{{"condition:\neq(variables['Build.SourceBranch'],\n'refs/heads/main')"}}
-            deploy["☁️ KubernetesManifest@1\nor AzureWebApp@1"]
-            skip(["Skip Stage"])
-        end
-    end
-
-    push --> build
-    pr --> build
-    build --> lint --> test --> docker
-    docker --> gate
-    gate -->|Succeeded| deploy
-    gate -->|Skipped| skip
-
-    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
-    style pool fill:#161b22,stroke:#8b949e,color:#c9d1d9
-    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
-    style pkg fill:#2d333b,stroke:#d29922,color:#c9d1d9
-    style cd fill:#2d333b,stroke:#f85149,color:#c9d1d9
+flowchart TB
+    trigger[Git Push / PR] --> build[Build]
+    build --> lint[Lint]
+    lint --> test[Test]
+    test --> dockerBuild[Docker Build]
+    dockerBuild --> dockerPush[Docker Push]
+    dockerPush --> deploy[Deploy]
+    deploy --> done[Done]
 ```
 
 ## Stage-by-Stage Explanation
@@ -62,8 +36,8 @@ flowchart TD
 | **Build** | Compile or install deps | Maven, npm, dotnet, etc. publish artifact. | java-build, publish/ |
 | **Lint** | Static analysis | checkstyle, ESLint, flake8, etc. Fails on violations. | — |
 | **Test** | Unit tests + coverage | Runs tests, publishJUnitResults, JaCoCo/Cobertura. | Test results |
-| **Docker** | Containerize and push | Docker task, push to registry. Only on main. | Image in registry |
-| **Deploy** | Deploy to staging | Only on main. Replace with kubectl/Helm. | — |
+| **Docker** | Build and push image | Docker task build + push. Runs on every branch. | Image in registry |
+| **Deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace with kubectl/Helm/docker run. | — |
 
 ## Tech Stacks
 
