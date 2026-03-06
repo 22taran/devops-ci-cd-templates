@@ -15,12 +15,40 @@ ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes. It moni
 ## CI/CD + GitOps Flow
 
 ```mermaid
-flowchart LR
-    CI[CI Pipeline] -->|Build & Push Image| Registry[Docker Registry]
-    Dev[Developer] -->|Push Manifests| Git[Git Repo]
-    ArgoCD[ArgoCD] -->|Watch| Git
-    ArgoCD -->|Sync| K8s[Kubernetes]
-    Registry -->|Pull Image| K8s
+flowchart TD
+    subgraph dev["👨‍💻 Developer"]
+        code(["Code Change"])
+    end
+
+    subgraph ci["⚙️ CI Pipeline — Jenkins / GitHub Actions / etc."]
+        build["🔨 Build & Test"]
+        push_img["🐳 Push Image\nto Docker / ECR / GCR"]
+    end
+
+    subgraph gitops["📂 Git Repo — Source of Truth"]
+        manifests["📝 K8s Manifests\nDeployment, Service, Ingress\nImage tag updated by CI"]
+    end
+
+    subgraph argo["🔄 ArgoCD Controller"]
+        watch["👀 Watch repo\npolling or webhook"]
+        diff["🔍 Detect Drift\ndesired vs live state"]
+        sync["♻️ Sync\nautomated · prune · selfHeal"]
+    end
+
+    subgraph k8s["☸️ Kubernetes Cluster"]
+        pods["Pods / Services / Ingress"]
+    end
+
+    code --> build --> push_img
+    push_img -->|update image tag| manifests
+    manifests --> watch --> diff --> sync --> pods
+    pods -.->|live state| diff
+
+    style dev fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+    style gitops fill:#2d333b,stroke:#d29922,color:#c9d1d9
+    style argo fill:#2d333b,stroke:#a371f7,color:#c9d1d9
+    style k8s fill:#2d333b,stroke:#f85149,color:#c9d1d9
 ```
 
 ## Stage-by-Stage Explanation

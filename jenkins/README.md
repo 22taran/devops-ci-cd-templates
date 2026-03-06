@@ -19,16 +19,44 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart LR
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> docker[Docker Build and Push]
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> post[Post: Cleanup and Notify]
-    skip --> post
+flowchart TD
+    subgraph trigger["🔔 Trigger"]
+        scm(["SCM Poll / Webhook"])
+    end
+
+    subgraph agent["🐳 Docker Agent"]
+        img["maven / node / python / go ..."]
+    end
+
+    subgraph pipeline["📋 Declarative Pipeline Stages"]
+        build["🔨 Build\nCompile & install deps"]
+        lint["🔍 Lint\nCheckstyle, ESLint, flake8 ..."]
+        test["🧪 Test\nUnit tests + coverage report"]
+        pkg["📦 Package\nJAR / binary / bundle"]
+        docker["🐳 Docker Build & Push\nCredentials via withCredentials"]
+        gate{{"Branch = main?"}}
+        deploy["☁️ Deploy\nkubectl / helm / ssh"]
+        skip(["Skip"])
+    end
+
+    subgraph post["🏁 Post Actions"]
+        success["✅ success: notify"]
+        failure["❌ failure: alert"]
+        always["🧹 always: cleanWs"]
+    end
+
+    scm --> img --> build
+    build --> lint --> test --> pkg --> docker
+    docker --> gate
+    gate -->|Yes| deploy --> success
+    gate -->|No| skip --> always
+    deploy --> failure
+    deploy --> always
+
+    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style agent fill:#1a1f29,stroke:#d29922,color:#c9d1d9
+    style pipeline fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+    style post fill:#2d333b,stroke:#8b949e,color:#c9d1d9
 ```
 
 ## Stage-by-Stage Explanation

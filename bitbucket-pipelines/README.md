@@ -18,16 +18,32 @@ Each `bitbucket-pipelines.yml` uses Bitbucket's native syntax with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart LR
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> docker[Docker Build and Push]
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> done[Done]
-    skip --> done
+flowchart TD
+    subgraph trigger["🔔 Trigger"]
+        push(["push to any branch"])
+    end
+
+    subgraph default_pipe["📋 pipelines: default"]
+        subgraph steps["Step-by-step execution"]
+            build["🔨 Step 1 — Build\nimage: maven / node / python\nCaches: maven, node, pip"]
+            lint["🔍 Step 2 — Lint\nCheckstyle / ESLint / flake8"]
+            test["🧪 Step 3 — Test\nUnit tests + coverage"]
+        end
+    end
+
+    subgraph branch_pipe["🌿 pipelines: branches: main"]
+        docker["🐳 Step — Docker Build & Push\nservices:\n  - docker"]
+        deploy["☁️ Step — Deploy\ndeployment: staging\npipe: atlassian/kubectl-run"]
+    end
+
+    push --> build --> lint --> test
+    test -->|main only| docker --> deploy
+    test -->|other branches| done(["Done"])
+
+    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style default_pipe fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+    style steps fill:#161b22,stroke:#8b949e,color:#c9d1d9
+    style branch_pipe fill:#2d333b,stroke:#f85149,color:#c9d1d9
 ```
 
 ## Stage-by-Stage Explanation

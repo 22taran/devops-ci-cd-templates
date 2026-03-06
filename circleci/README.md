@@ -18,17 +18,46 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart LR
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    build --> test[Test]
-    lint --> docker[Docker Build and Push]
+flowchart TD
+    subgraph trigger["🔔 Trigger"]
+        push(["push / PR to main"])
+    end
+
+    subgraph orbs["🔮 Orbs"]
+        docker_orb["circleci/docker"]
+        node_orb["circleci/node\nor language orb"]
+    end
+
+    subgraph workflow["🔄 Workflow: build-test-deploy"]
+        subgraph ci["⚙️ CI"]
+            build["🔨 build\nExecutor: docker image\nCheckout → install → compile"]
+            lint["🔍 lint\nParallel with test"]
+            test["🧪 test\nParallel with lint\nStore test results"]
+        end
+        subgraph cd["🚀 CD"]
+            docker["🐳 docker-build-push\nRemote Docker executor\nOrb command: build & push"]
+            gate{{"filters: branch = main"}}
+            deploy["☁️ deploy\nkubectl / helm / ssh"]
+            skip(["Skip"])
+        end
+    end
+
+    push --> build
+    docker_orb -.-> docker
+    node_orb -.-> build
+    build --> lint
+    build --> test
+    lint --> docker
     test --> docker
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> done[Done]
-    skip --> done
+    docker --> gate
+    gate -->|Yes| deploy
+    gate -->|No| skip
+
+    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style orbs fill:#1a1f29,stroke:#a371f7,color:#c9d1d9
+    style workflow fill:#161b22,stroke:#8b949e,color:#c9d1d9
+    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+    style cd fill:#2d333b,stroke:#f85149,color:#c9d1d9
 ```
 
 ## Stage-by-Stage Explanation

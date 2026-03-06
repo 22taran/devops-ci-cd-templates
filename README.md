@@ -64,16 +64,43 @@
 Every pipeline follows a consistent **5-stage pattern**:
 
 ```mermaid
-flowchart LR
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> docker[Docker Build and Push]
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> done[Done]
-    skip --> done
+flowchart TD
+    subgraph trigger["🔔 Trigger"]
+        push(["git push"])
+        pr(["Pull Request"])
+    end
+
+    subgraph ci["⚙️ Continuous Integration"]
+        build["🔨 Build\nCompile & Install Deps"]
+        direction LR
+        lint["🔍 Lint\nStatic Analysis"]
+        test["🧪 Test\nUnit Tests & Coverage"]
+    end
+
+    subgraph package["📦 Package"]
+        docker["🐳 Docker Build & Push\nTag with commit SHA"]
+    end
+
+    subgraph cd["🚀 Continuous Delivery"]
+        gate{{"Branch = main?"}}
+        deploy["☁️ Deploy to Staging\nKubernetes / ECS / VM"]
+        skip(["Skip Deploy"])
+    end
+
+    push --> build
+    pr --> build
+    build --> lint
+    build --> test
+    lint --> docker
+    test --> docker
+    docker --> gate
+    gate -->|Yes| deploy
+    gate -->|No| skip
+
+    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style ci fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+    style package fill:#2d333b,stroke:#d29922,color:#c9d1d9
+    style cd fill:#2d333b,stroke:#f85149,color:#c9d1d9
 ```
 
 | Stage    | Description                                     |

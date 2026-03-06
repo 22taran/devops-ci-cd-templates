@@ -19,17 +19,46 @@ Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart LR
-    trigger[Git Push / MR] --> build[Build]
-    build --> lint[Lint]
-    build --> test[Test]
-    lint --> docker[Docker Build and Push]
+flowchart TD
+    subgraph trigger["🔔 Trigger"]
+        push(["git push"])
+        mr(["Merge Request"])
+    end
+
+    subgraph stages["📋 GitLab CI Stages"]
+        subgraph s1["stage: build"]
+            build["🔨 Build\nCompile & cache deps"]
+        end
+        subgraph s2["stage: lint + test ‹parallel›"]
+            lint["🔍 Lint\nStatic analysis"]
+            test["🧪 Test\nUnit tests + coverage\nartifacts: reports/"]
+        end
+        subgraph s3["stage: docker"]
+            docker["🐳 Docker Build & Push\nDocker-in-Docker service"]
+        end
+        subgraph s4["stage: deploy"]
+            gate{{"rules: if $CI_COMMIT_BRANCH == main"}}
+            deploy["☁️ Deploy to Staging\nenvironment: staging"]
+            skip(["Skip"])
+        end
+    end
+
+    push --> build
+    mr --> build
+    build --> lint
+    build --> test
+    lint --> docker
     test --> docker
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> done[Done]
-    skip --> done
+    docker --> gate
+    gate -->|Yes| deploy
+    gate -->|No| skip
+
+    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style stages fill:#161b22,stroke:#8b949e,color:#c9d1d9
+    style s1 fill:#2d333b,stroke:#3fb950,color:#c9d1d9
+    style s2 fill:#2d333b,stroke:#d29922,color:#c9d1d9
+    style s3 fill:#2d333b,stroke:#a371f7,color:#c9d1d9
+    style s4 fill:#2d333b,stroke:#f85149,color:#c9d1d9
 ```
 
 ## Stage-by-Stage Explanation

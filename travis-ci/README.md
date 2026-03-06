@@ -18,16 +18,37 @@ Each `.travis.yml` uses Travis stages with:
 ## CI/CD Pipeline Diagram
 
 ```mermaid
-flowchart LR
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> docker[Docker Build and Push]
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> done[Done]
-    skip --> done
+flowchart TD
+    subgraph trigger["🔔 Trigger"]
+        push(["push / PR"])
+    end
+
+    subgraph lifecycle["🔄 Travis CI Build Lifecycle"]
+        subgraph setup["📥 Setup"]
+            lang["language: java / node / python ..."]
+            cache["cache: maven / npm / pip"]
+        end
+        subgraph jobs["📋 Jobs (stages)"]
+            build["🔨 Build\ninstall + script phase"]
+            lint["🔍 Lint\nStage: lint"]
+            test["🧪 Test\nStage: test\nscript: mvn test / npm test"]
+            docker["🐳 Docker\nStage: docker\nservices: docker"]
+            gate{{"branch = main?"}}
+            deploy["☁️ Deploy\nStage: deploy\nprovider: script"]
+            skip(["Skip"])
+        end
+    end
+
+    push --> lang --> cache --> build
+    build --> lint --> test --> docker
+    docker --> gate
+    gate -->|Yes| deploy
+    gate -->|No| skip
+
+    style trigger fill:#2d333b,stroke:#58a6ff,color:#c9d1d9
+    style lifecycle fill:#161b22,stroke:#8b949e,color:#c9d1d9
+    style setup fill:#2d333b,stroke:#d29922,color:#c9d1d9
+    style jobs fill:#2d333b,stroke:#3fb950,color:#c9d1d9
 ```
 
 ## Stage-by-Stage Explanation
