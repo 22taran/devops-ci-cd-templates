@@ -10,7 +10,7 @@
 
 **A comprehensive collection of CI/CD pipeline configurations across 9 popular DevOps tools and 8 tech stacks.**
 
-*Production-ready templates with build, lint, test, Docker, and deploy stages.*
+*Docker-based pipelines: production-ready templates with build, lint, test, Docker build/image scan, push to registry, and deploy stages.*
 
 [Jenkins](#jenkins) · [GitHub Actions](#github-actions) · [GitLab CI](#gitlab-ci) · [CircleCI](#circleci) · [Travis CI](#travis-ci) · [Azure DevOps](#azure-devops) · [Bitbucket Pipelines](#bitbucket-pipelines) · [ArgoCD](#argocd) · [AWS CodePipeline](#aws-codepipeline)
 
@@ -61,7 +61,7 @@
 
 ## 🔄 Pipeline Stages
 
-Every pipeline follows a consistent pattern. Below is the full CI/CD flow including optional stages (Security Scan, Staging → Production):
+Every pipeline is **Docker-based**: it builds container images, scans them for vulnerabilities, pushes to a registry, and deploys (Docker or Kubernetes). Below is the full CI/CD flow including optional stages (Security Scan, Staging → Production):
 
 <div align="center">
 <pre>
@@ -109,41 +109,7 @@ Every pipeline follows a consistent pattern. Below is the full CI/CD flow includ
 ```
 </pre>
 
-
-| Stage         | Description                                     |
-|---------------|-------------------------------------------------|
-| **Build**     | Compile source code / install dependencies     |
-| **Lint**      | Static code analysis & style checks            |
-| **Test**      | Run unit tests with coverage reports           |
-| **Docker Build** | Build Docker image from Dockerfile          |
-| **Security Scan** | SAST, dependency scan, container scan, secret scan |
-| **Docker Push**  | Push image to registry                        |
-| **Deploy**    | Deploy to staging (Docker or Kubernetes)       |
-
----
-
-## 🔒 Security Scan & Industry Tools
-
-Pipelines support an optional **Security** stage (typically after Docker Build, before Docker Push). Choose from these industry-standard tools:
-
-| Category | Tool | Use Case | License |
-|----------|------|----------|---------|
-| **Container / Image Scan** | [Trivy](https://github.com/aquasecurity/trivy) | Scan Docker images for CVEs, misconfigurations | Apache 2.0 |
-| | [Snyk Container](https://snyk.io/product/container-vulnerability-management/) | Vulnerability scanning, fix advice | Freemium |
-| | [Clair](https://github.com/quay/clair) | Static analysis of container images | Apache 2.0 |
-| | [Anchore](https://anchore.com/) | Policy-based image scanning | Apache 2.0 |
-| **SAST** (Static Analysis) | [SonarQube](https://www.sonarqube.org/) | Code quality, security hotspots, bugs | LGPL / Commercial |
-| | [Semgrep](https://semgrep.dev/) | Lightweight static analysis, custom rules | LGPL 2.1 |
-| | [Snyk Code](https://snyk.io/product/snyk-code/) | Developer-focused SAST | Freemium |
-| | [CodeQL](https://codeql.github.com/) | GitHub-native semantic code analysis | Free (GitHub) |
-| **Dependency Scan** | [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/) | Known vulnerable dependencies | Apache 2.0 |
-| | [Snyk](https://snyk.io/) | Open source deps, fix PRs | Freemium |
-| | `npm audit` / `pip-audit` / `go mod` | Built-in language scanners | — |
-| **Secret Scan** | [Gitleaks](https://github.com/gitleaks/gitleaks) | Detect secrets in repo | MIT |
-| | [TruffleHog](https://github.com/trufflesecurity/trufflehog) | Find credentials, API keys | AGPL |
-| | [detect-secrets](https://github.com/Yelp/detect-secrets) | Prevent committing secrets | Apache 2.0 |
-
-*Placement:* Container scan runs after Docker Build. SAST/dependency scan can run after Test (in parallel or sequentially). Secret scan often runs at trigger/checkout.
+</div>
 
 ---
 
@@ -191,6 +157,31 @@ Declarative GitOps continuous delivery for Kubernetes. Application manifests tha
 
 ### AWS CodePipeline
 AWS-native CI/CD with CodeBuild `buildspec.yml`. Integrates with ECR, ECS, Lambda, and other AWS services.
+
+---
+
+## 🔒 Security Scan & Industry Tools
+
+Pipelines support an optional **Security** stage (typically after Docker Build, before Docker Push). Choose from these industry-standard tools:
+
+| Category | Tool | Use Case | License |
+|----------|------|----------|---------|
+| **Container / Image Scan** | [Trivy](https://github.com/aquasecurity/trivy) | Scan Docker images for CVEs, misconfigurations | Apache 2.0 |
+| | [Snyk Container](https://snyk.io/product/container-vulnerability-management/) | Vulnerability scanning, fix advice | Freemium |
+| | [Clair](https://github.com/quay/clair) | Static analysis of container images | Apache 2.0 |
+| | [Anchore](https://anchore.com/) | Policy-based image scanning | Apache 2.0 |
+| **SAST** (Static Analysis) | [SonarQube](https://www.sonarqube.org/) | Code quality, security hotspots, bugs | LGPL / Commercial |
+| | [Semgrep](https://semgrep.dev/) | Lightweight static analysis, custom rules | LGPL 2.1 |
+| | [Snyk Code](https://snyk.io/product/snyk-code/) | Developer-focused SAST | Freemium |
+| | [CodeQL](https://codeql.github.com/) | GitHub-native semantic code analysis | Free (GitHub) |
+| **Dependency Scan** | [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/) | Known vulnerable dependencies | Apache 2.0 |
+| | [Snyk](https://snyk.io/) | Open source deps, fix PRs | Freemium |
+| | `npm audit` / `pip-audit` / `go mod` | Built-in language scanners | — |
+| **Secret Scan** | [Gitleaks](https://github.com/gitleaks/gitleaks) | Detect secrets in repo | MIT |
+| | [TruffleHog](https://github.com/trufflesecurity/trufflehog) | Find credentials, API keys | AGPL |
+| | [detect-secrets](https://github.com/Yelp/detect-secrets) | Prevent committing secrets | Apache 2.0 |
+
+*Placement:* Container scan runs after Docker Build. SAST/dependency scan can run after Test (in parallel or sequentially). Secret scan often runs at trigger/checkout.
 
 ---
 
