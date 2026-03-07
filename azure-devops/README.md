@@ -11,7 +11,7 @@ Azure Pipelines YAML configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `azure-pipelines.yml` uses multi-stage pipelines with:
-- **Stages**: Build → Lint → Test → Docker Build → Security Scan → Docker Push → Deploy
+- **Stages**: Build → Parallel (Lint | Test | Security Code) → Docker Build → Security (Image) → Docker Push → Deploy
 - **Tasks**: Maven, Node, Python, DotNet, etc.
 - **Artifacts**: publish between stages
 - **Approval gates**: Optional for deploy stage
@@ -35,14 +35,8 @@ Each `azure-pipelines.yml` uses multi-stage pipelines with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lint                                                           │
-│  stage: Lint | checkstyle, ESLint, flake8, etc.                 │
-└─────────────────────────────────────────────────────────────────┘
-|
-▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Test                                                           │
-│  stage: Test | publishJUnitResults, JaCoCo/Cobertura            │
+│  Lint | Test | Security (Code)                                  │
+│  Parallel: checkstyle/eslint, junit, Trivy fs, Semgrep, Gitleaks│
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -53,8 +47,8 @@ Each `azure-pipelines.yml` uses multi-stage pipelines with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair | scan built image, fail on CVE │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -78,12 +72,20 @@ Each `azure-pipelines.yml` uses multi-stage pipelines with:
 | Stage | Purpose | What Happens | Artifacts / Output |
 |-------|---------|--------------|--------------------|
 | **Build** | Compile or install deps | Maven, npm, dotnet, etc. publish artifact. | java-build, publish/ |
-| **Lint** | Static analysis | checkstyle, ESLint, flake8, etc. Fails on violations. | — |
-| **Test** | Unit tests + coverage | Runs tests, publishJUnitResults, JaCoCo/Cobertura. | Test results |
+| **Lint** | Static analysis | Runs in parallel with Test and Security (Code). checkstyle, ESLint, flake8, etc. | — |
+| **Test** | Unit tests + coverage | Runs in parallel. publishJUnitResults, JaCoCo/Cobertura. | Test results |
+| **Security (Code)** | SAST, deps, secrets | Runs in parallel. Trivy fs, Semgrep, Snyk Code, OWASP Dep-Check, Gitleaks. | Scan report |
 | **Docker Build** | Build image | Docker task build. | Image in local daemon |
-| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **Security (Image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair. Scan image for CVEs. | Scan report |
 | **Docker Push** | Push to registry | Docker task push. Runs on every branch. | Image in registry |
 | **Deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace with kubectl/Helm/docker run. | — |
+
+## Security Tools (Industry Options)
+
+| Category | Purpose | Tools |
+|----------|---------|-------|
+| **Security (Code)** | SAST, dependency scan, secret scan — runs in parallel with Lint/Test | [Trivy fs](https://trivy.dev/), [Semgrep](https://semgrep.dev/), [Snyk Code](https://snyk.io/product/snyk-code/), [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/), [Gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog) |
+| **Security (Image)** | Container scan — runs after Docker Build, before Push | [Trivy](https://trivy.dev/), [Snyk Container](https://snyk.io/product/container-vulnerability-management/), [Clair](https://github.com/quay/clair), [Anchore](https://anchore.com/) |
 
 ## Tech Stacks
 

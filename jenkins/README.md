@@ -12,7 +12,7 @@ Declarative Jenkins pipeline configurations for 8 tech stacks.
 
 Each `Jenkinsfile` uses declarative pipeline syntax with:
 - **Docker-based agents** for consistent builds
-- **7 stages**: Build → Lint → Test → Docker Build → Security Scan → Docker Push → Deploy
+- **8 stages**: Build → Parallel (Lint | Test | Security Code) → Docker Build → Security (Image) → Docker Push → Deploy
 - **Post-build actions** for cleanup and notifications
 - **Environment variables** for configuration
 
@@ -35,14 +35,8 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lint                                                           │
-│  step: sh (checkstyle/eslint/flake8/etc)                        │
-└─────────────────────────────────────────────────────────────────┘
-|
-▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Test                                                           │
-│  junit, jacoco/cobertura, publishHTML                           │
+│  Lint | Test | Security (Code)                                  │
+│  Parallel: checkstyle/eslint, junit, Trivy fs, Semgrep, Gitleaks│
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -53,8 +47,8 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair | scan built image, fail on CVE │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -85,14 +79,22 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 | **Environment** | Configuration | `DOCKER_IMAGE`, `DOCKER_TAG`, `DEPLOY_ENV` are set. Customize these for your registry and target environment. | Env vars available to all stages |
 | **Options** | Pipeline behavior | Timeout (20–30 min), no concurrent builds, keep last 10 build logs. Prevents runaway jobs and clutter. | — |
 | **Build / Install / Restore** | Compile or install deps | Maven compile, `npm ci`, `pip install`, `go build`, `dotnet restore/build`, `bundle install`, `cargo build`, `composer install`. | Compiled code or installed deps |
-| **Lint** | Static analysis | checkstyle, ESLint, flake8, go vet/staticcheck, dotnet format, RuboCop, clippy/rustfmt, phpcs/phpstan. Fails build on style or quality violations. | — |
-| **Test** | Unit tests + coverage | Run tests with coverage. Publish JUnit, Cobertura, or HTML reports to Jenkins. | Test reports, coverage data |
+| **Lint** | Static analysis | Runs in parallel with Test and Security (Code). checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
+| **Test** | Unit tests + coverage | Runs in parallel. Publish JUnit, Cobertura, or HTML reports. | Test reports, coverage data |
+| **Security (Code)** | SAST, deps, secrets | Runs in parallel. Trivy fs, Semgrep, Snyk Code, OWASP Dep-Check, Gitleaks. Fail on critical. | Scan report |
 | **Package / Publish** | (Java, .NET only) | Create deployable JAR or publish output. Archive artifacts for later use. | JAR, publish folder |
-| **Docker Build** | Build image | Build Docker image from project Dockerfile. Image stays in local daemon for Push stage. | Image in local daemon |
-| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **Docker Build** | Build image | Build Docker image from project Dockerfile. Image stays in local daemon. | Image in local daemon |
+| **Security (Image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair. Scan image for CVEs. Fail on critical. | Scan report |
 | **Docker Push** | Push to registry | Authenticate to registry, push image with build number and `latest` tags. | Image in registry |
 | **Deploy** | Deploy to staging | Runs on every branch. Supports Docker (`docker run`, `docker-compose`) or Kubernetes (`kubectl`, Helm). Replace placeholder with your deployment logic. | — |
 | **Post Actions** | Cleanup and notify | On success/failure: echo status. Always: `cleanWs()` to free disk. | Clean workspace |
+
+## Security Tools (Industry Options)
+
+| Category | Purpose | Tools |
+|----------|---------|-------|
+| **Security (Code)** | SAST, dependency scan, secret scan — runs in parallel with Lint/Test | [Trivy fs](https://trivy.dev/), [Semgrep](https://semgrep.dev/), [Snyk Code](https://snyk.io/product/snyk-code/), [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/), [Gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog) |
+| **Security (Image)** | Container scan — runs after Docker Build, before Push | [Trivy](https://trivy.dev/), [Snyk Container](https://snyk.io/product/container-vulnerability-management/), [Clair](https://github.com/quay/clair), [Anchore](https://anchore.com/) |
 
 ## Tech Stacks
 

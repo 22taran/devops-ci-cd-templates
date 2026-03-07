@@ -13,9 +13,9 @@ AWS CodeBuild buildspec configurations for 8 tech stacks.
 
 Each `buildspec.yml` defines CodeBuild phases:
 - **install**: Set up runtime (Java, Node, Python, etc.)
-- **pre_build**: Lint, ECR login
-- **build**: Compile, test, Docker build
-- **Security**: Optional Trivy/Snyk/ECR scan before push
+- **pre_build**: Parallel (Lint | Test | Security Code), ECR login
+- **build**: Compile, Docker build
+- **Security (Image)**: Trivy/Snyk/Clair/ECR scan after Docker build, before push
 - **post_build**: Push image, create imagedefinitions.json for ECS/CodeDeploy
 
 ## CI/CD Pipeline Flow Diagram
@@ -37,20 +37,21 @@ Each `buildspec.yml` defines CodeBuild phases:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Pre-build: Lint, ECR Login                                     │
-│  buildspec: pre_build | checkstyle, ESLint, etc. | aws ecr login│
+│  Pre-build: Lint | Test | Security (Code), ECR Login            │
+│  buildspec: pre_build | checkstyle, junit, Trivy fs, Semgrep,   │
+│  Gitleaks | aws ecr login                                       │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Build: Compile, Test, Docker Build                             │
-│  buildspec: build | Maven/npm/dotnet build, test, docker build  │
+│  Build: Compile, Docker Build                                   │
+│  buildspec: build | Maven/npm/dotnet build, docker build        │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / Snyk / ECR image scan | fail on critical CVEs          │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair / ECR | scan built image, CVE   │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -74,12 +75,19 @@ Each `buildspec.yml` defines CodeBuild phases:
 | Phase | Purpose | What Happens | Artifacts / Output |
 |-------|---------|--------------|--------------------|
 | **install** | Runtime setup | runtime-versions (java, nodejs, etc.) | — |
-| **pre_build** | Lint + auth | checkstyle, ESLint, etc. ECR login. | — |
-| **build** | Compile, test, Docker | Maven/npm/dotnet build, test, docker build | — |
-| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, ECR enhanced scanning. Fail on critical CVEs. | Scan report |
+| **pre_build** | Lint, Test, Security (Code), auth | Parallel: checkstyle, ESLint, junit/pytest, Trivy fs, Semgrep, Gitleaks. ECR login. | — |
+| **build** | Compile, Docker build | Maven/npm/dotnet build, docker build | — |
+| **Security (Image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair, ECR. Scan image for CVEs. | Scan report |
 | **post_build** | Push and artifacts | docker push, imagedefinitions.json | imagedefinitions.json, JAR |
 | **artifacts** | Output | imagedefinitions.json for ECS, JAR for Lambda | — |
 | **reports** | Test reports | JUnit XML for CodeBuild test reports | — |
+
+## Security Tools (Industry Options)
+
+| Category | Purpose | Tools |
+|----------|---------|-------|
+| **Security (Code)** | SAST, dependency scan, secret scan — runs in parallel with Lint/Test | [Trivy fs](https://trivy.dev/), [Semgrep](https://semgrep.dev/), [Snyk Code](https://snyk.io/product/snyk-code/), [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/), [Gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog) |
+| **Security (Image)** | Container scan — runs after Docker Build, before Push | [Trivy](https://trivy.dev/), [Snyk Container](https://snyk.io/product/container-vulnerability-management/), [Clair](https://github.com/quay/clair), [Anchore](https://anchore.com/), [ECR Enhanced Scanning](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html) |
 
 ## Tech Stacks
 

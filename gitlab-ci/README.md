@@ -11,7 +11,7 @@ GitLab CI/CD pipeline configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
-- **Stages**: build → lint → test → docker build → security → docker push → deploy
+- **Stages**: build → parallel (lint, test, security-code) → docker build → security (image) → docker push → deploy
 - **Docker images** per job for reproducible builds
 - **Caching** for dependency speedup (Maven, npm, pip, etc.)
 - **Artifacts** for build outputs and coverage reports
@@ -35,14 +35,8 @@ Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lint                                                           │
-│  stage: lint | runs parallel with test (checkstyle/eslint/etc)  │
-└─────────────────────────────────────────────────────────────────┘
-|
-▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Test                                                           │
-│  stage: test | artifacts: surefire-reports, jacoco, coverage    │
+│  Lint | Test | Security (Code)                                  │
+│  Parallel: checkstyle/eslint, junit, Trivy fs, Semgrep, Gitleaks│
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -53,8 +47,8 @@ Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / Semgrep / Snyk / Gitleaks | fail on critical           │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair | scan built image, fail on CVE │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -78,12 +72,20 @@ Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
 | Stage | Purpose | What Happens | Artifacts / Output |
 |-------|---------|--------------|--------------------|
 | **build** | Compile or install deps | Uses Docker image per stack. Maven compile, npm ci, pip install, etc. Caches deps for speed. | JAR, node_modules, publish/ |
-| **lint** | Static analysis | Runs in parallel with test. checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
-| **test** | Unit tests + coverage | Runs tests. JUnit/Cobertura reports, coverage extraction. Artifacts expire after 7 days. | surefire-reports, jacoco, coverage |
+| **lint** | Static analysis | Runs in parallel with test and security-code. checkstyle, ESLint, flake8, go vet, etc. | — |
+| **test** | Unit tests + coverage | Runs in parallel. JUnit/Cobertura reports, coverage extraction. Artifacts expire after 7 days. | surefire-reports, jacoco, coverage |
+| **security-code** | SAST, deps, secrets | Runs in parallel. Trivy fs, Semgrep, Snyk Code, OWASP Dep-Check, Gitleaks. | Scan report |
 | **docker build** | Build image | Docker-in-Docker (dind). Build image with commit SHA + latest. | Image in local daemon |
-| **security** | Vulnerability check | Optional. Trivy (container), Semgrep (SAST), Snyk, Gitleaks. Fail on critical CVEs. | Scan report |
+| **security (image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair. Scan image for CVEs. | Scan report |
 | **docker push** | Push to registry | Push image to CI_REGISTRY. | Image in registry |
 | **deploy** | Deploy to staging | Often `when: manual` for approval. Supports Docker or Kubernetes. Replace echo with kubectl/Helm. | — |
+
+## Security Tools (Industry Options)
+
+| Category | Purpose | Tools |
+|----------|---------|-------|
+| **Security (Code)** | SAST, dependency scan, secret scan — runs in parallel with Lint/Test | [Trivy fs](https://trivy.dev/), [Semgrep](https://semgrep.dev/), [Snyk Code](https://snyk.io/product/snyk-code/), [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/), [Gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog) |
+| **Security (Image)** | Container scan — runs after Docker Build, before Push | [Trivy](https://trivy.dev/), [Snyk Container](https://snyk.io/product/container-vulnerability-management/), [Clair](https://github.com/quay/clair), [Anchore](https://anchore.com/) |
 
 ## Tech Stacks
 
