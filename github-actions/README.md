@@ -13,22 +13,65 @@ GitHub-native CI/CD workflow configurations for 8 tech stacks.
 Each `ci.yml` workflow includes:
 - **Triggers**: Push to `main`/`develop`, pull requests to `main`
 - **Caching**: Language-specific dependency caching (Maven, npm, pip, etc.)
-- **6 jobs**: Build → Lint → Test → Docker Build → Docker Push → Deploy
+- **7 jobs**: Build → Lint → Test → Docker Build → Security Scan → Docker Push → Deploy
 - **Artifact uploads** for build outputs and coverage reports
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    build --> test[Test]
-    lint --> dockerBuild[Docker Build]
-    test --> dockerBuild
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> done[Done]
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Push / PR                                                  │
+│  GitHub Actions: on: push, pull_request | workflow_dispatch     │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build                                                          │
+│  jobs: runs-on ubuntu-latest | actions/setup-*, actions/cache   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Lint                                                           │
+│  job: runs in parallel with test (checkstyle/eslint/flake8/etc) │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Test                                                           │
+│  job: coverage artifact upload | JUnit, Cobertura               │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Build                                                   │
+│  Docker Buildx: build with load: true, tags: sha + latest       │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / CodeQL / Snyk / Gitleaks | fail on critical CVEs      │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Push                                                    │
+│  docker/login-action + docker push to registry                  │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  job: kubectl / helm / docker run                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 
@@ -39,6 +82,7 @@ flowchart TB
 | **Lint** | Static analysis | Runs in parallel with test. checkstyle, ESLint, flake8, go vet, etc. Fails workflow on violations. | — |
 | **Test** | Unit tests + coverage | Runs tests, uploads coverage as artifact. Some workflows use matrix for multi-version testing. | coverage-report artifact |
 | **Docker Build** | Build image | Docker Buildx, build with `push: false` and `load: true`. Tags: `sha` + `latest`. | Image in local daemon |
+| **Security Scan** | Vulnerability check | Optional. Trivy (container), CodeQL (SAST), Snyk, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
 | **Docker Push** | Push to registry | Login, push image. Runs after build. | Image in registry |
 | **Deploy** | Deploy to staging | Runs every run. Supports Docker (docker run) or Kubernetes (kubectl/Helm). Replace with your deploy logic. | — |
 

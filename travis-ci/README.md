@@ -15,18 +15,62 @@ Each `.travis.yml` uses Travis stages with:
 - **Caching**: Maven, npm, pip, etc. for dependency speedup
 - **Stages**: build → lint → test → docker (Build + Push) → deploy on every branch
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> dockerBuild[Docker Build]
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> done[Done]
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Push / PR                                                  │
+│  Travis CI: on: branches                                        │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build                                                          │
+│  stage: build | cache: maven, npm, pip | compile/install deps   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Lint                                                           │
+│  stage: lint | checkstyle, eslint, flake8, go vet, etc.         │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Test                                                           │
+│  stage: test | JUnit, pytest, go test, etc.                     │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Build                                                   │
+│  stage: docker | docker build with tag                          │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Push                                                    │
+│  stage: docker | docker login, push to registry                 │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  stage: deploy | kubectl / helm / docker run                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 
@@ -35,7 +79,9 @@ flowchart TB
 | **build** | Compile or install deps | Maven compile/package, npm ci, pip install, etc. Caches deps. | JAR, build artifacts |
 | **lint** | Static analysis | checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
 | **test** | Unit tests | Runs tests. Some configs publish coverage. | — |
-| **docker** | Build and push image | Docker login, build, tag, push. Runs on every branch. | Image in registry |
+| **docker (build)** | Build image | Docker build with tag. | Image in local daemon |
+| **security** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **docker (push)** | Push to registry | Docker login, push. Runs on every branch. | Image in registry |
 | **deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace echo with kubectl/Helm/docker run. | — |
 
 ## Tech Stacks

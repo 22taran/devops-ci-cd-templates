@@ -11,21 +11,65 @@ Bitbucket Pipelines configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `bitbucket-pipelines.yml` uses Bitbucket's native syntax with:
-- **Steps**: Build, Lint, Test, Docker Build, Docker Push, Deploy (runs on all branches)
+- **Steps**: Build, Lint, Test, Docker Build, Security Scan, Docker Push, Deploy (runs on all branches)
 - **Deployment**: `deployment: staging` for environment tracking
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> dockerBuild[Docker Build]
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> done[Done]
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Push / PR                                                  │
+│  Bitbucket: pipelines with branch filters                       │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build                                                          │
+│  step: script | image: maven/node/python | caches               │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Lint                                                           │
+│  step: script | checkstyle, ESLint, flake8, etc.                │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Test                                                           │
+│  step: script | JUnit, pytest, go test, etc.                    │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Build                                                   │
+│  step: script | docker build with tag                           │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Push                                                    │
+│  step: script | docker login, push | DOCKER_USERNAME/PASSWORD   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  step: deployment: staging | kubectl / helm / docker run        │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 
@@ -35,6 +79,7 @@ flowchart TB
 | **Lint** | Static analysis | checkstyle, ESLint, flake8, etc. Fails on violations. | — |
 | **Test** | Unit tests | Runs tests. Some configs store coverage. | — |
 | **Docker Build** | Build image | Docker build with tag. | Image in local daemon |
+| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
 | **Docker Push** | Push to registry | Docker login, push. | Image in registry |
 | **Deploy** | Deploy | deployment: staging. Docker: docker run / docker-compose. Kubernetes: kubectl / Helm. | — |
 

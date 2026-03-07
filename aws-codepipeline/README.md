@@ -15,18 +15,59 @@ Each `buildspec.yml` defines CodeBuild phases:
 - **install**: Set up runtime (Java, Node, Python, etc.)
 - **pre_build**: Lint, ECR login
 - **build**: Compile, test, Docker build
+- **Security**: Optional Trivy/Snyk/ECR scan before push
 - **post_build**: Push image, create imagedefinitions.json for ECS/CodeDeploy
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart LR
-    trigger[CodePipeline Trigger] --> install[Install Runtime]
-    install --> prebuild[Pre-build: Lint, ECR Login]
-    prebuild --> build[Build: Compile, Test, Docker Build]
-    build --> postbuild[Post-build: Push Image]
-    postbuild --> deploy[Deploy via CodePipeline]
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  CodePipeline Trigger                                           │
+│  Source: GitHub, CodeCommit, S3                                 │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Install Runtime                                                │
+│  buildspec: install | runtime-versions (java, nodejs, etc.)     │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Pre-build: Lint, ECR Login                                     │
+│  buildspec: pre_build | checkstyle, ESLint, etc. | aws ecr login│
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build: Compile, Test, Docker Build                             │
+│  buildspec: build | Maven/npm/dotnet build, test, docker build  │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Snyk / ECR image scan | fail on critical CVEs          │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Post-build: Push Image                                         │
+│  buildspec: post_build | docker push | imagedefinitions.json    │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  CodePipeline: ECS, CodeDeploy, or custom action                │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Phase-by-Phase Explanation
 
@@ -35,6 +76,7 @@ flowchart LR
 | **install** | Runtime setup | runtime-versions (java, nodejs, etc.) | — |
 | **pre_build** | Lint + auth | checkstyle, ESLint, etc. ECR login. | — |
 | **build** | Compile, test, Docker | Maven/npm/dotnet build, test, docker build | — |
+| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, ECR enhanced scanning. Fail on critical CVEs. | Scan report |
 | **post_build** | Push and artifacts | docker push, imagedefinitions.json | imagedefinitions.json, JAR |
 | **artifacts** | Output | imagedefinitions.json for ECS, JAR for Lambda | — |
 | **reports** | Test reports | JUnit XML for CodeBuild test reports | — |

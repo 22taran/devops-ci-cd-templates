@@ -11,23 +11,67 @@ Azure Pipelines YAML configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `azure-pipelines.yml` uses multi-stage pipelines with:
-- **Stages**: Build → Lint → Test → Docker → Deploy
+- **Stages**: Build → Lint → Test → Docker Build → Security Scan → Docker Push → Deploy
 - **Tasks**: Maven, Node, Python, DotNet, etc.
 - **Artifacts**: publish between stages
 - **Approval gates**: Optional for deploy stage
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    lint --> test[Test]
-    test --> dockerBuild[Docker Build]
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> done[Done]
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Push / PR                                                  │
+│  Azure DevOps: trigger: branches                                │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build                                                          │
+│  stage: Build | task: Maven, Node, DotNet, etc. | publish       │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Lint                                                           │
+│  stage: Lint | checkstyle, ESLint, flake8, etc.                 │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Test                                                           │
+│  stage: Test | publishJUnitResults, JaCoCo/Cobertura            │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Build                                                   │
+│  stage: Docker | Docker task build                              │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Push                                                    │
+│  stage: Docker | Docker task push | service connection          │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  stage: Deploy | approval gates optional | kubectl / helm       │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 
@@ -36,7 +80,9 @@ flowchart TB
 | **Build** | Compile or install deps | Maven, npm, dotnet, etc. publish artifact. | java-build, publish/ |
 | **Lint** | Static analysis | checkstyle, ESLint, flake8, etc. Fails on violations. | — |
 | **Test** | Unit tests + coverage | Runs tests, publishJUnitResults, JaCoCo/Cobertura. | Test results |
-| **Docker** | Build and push image | Docker task build + push. Runs on every branch. | Image in registry |
+| **Docker Build** | Build image | Docker task build. | Image in local daemon |
+| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **Docker Push** | Push to registry | Docker task push. Runs on every branch. | Image in registry |
 | **Deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace with kubectl/Helm/docker run. | — |
 
 ## Tech Stacks

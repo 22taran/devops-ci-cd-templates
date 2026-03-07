@@ -73,8 +73,34 @@ Every pipeline follows a consistent pattern. Below is the full CI/CD flow includ
 | **Lint**      | Static code analysis & style checks            |
 | **Test**      | Run unit tests with coverage reports           |
 | **Docker Build** | Build Docker image from Dockerfile          |
+| **Security Scan** | SAST, dependency scan, container scan, secret scan |
 | **Docker Push**  | Push image to registry                        |
 | **Deploy**    | Deploy to staging (Docker or Kubernetes)       |
+
+---
+
+## 🔒 Security Scan & Industry Tools
+
+Pipelines support an optional **Security** stage (typically after Docker Build, before Docker Push). Choose from these industry-standard tools:
+
+| Category | Tool | Use Case | License |
+|----------|------|----------|---------|
+| **Container / Image Scan** | [Trivy](https://github.com/aquasecurity/trivy) | Scan Docker images for CVEs, misconfigurations | Apache 2.0 |
+| | [Snyk Container](https://snyk.io/product/container-vulnerability-management/) | Vulnerability scanning, fix advice | Freemium |
+| | [Clair](https://github.com/quay/clair) | Static analysis of container images | Apache 2.0 |
+| | [Anchore](https://anchore.com/) | Policy-based image scanning | Apache 2.0 |
+| **SAST** (Static Analysis) | [SonarQube](https://www.sonarqube.org/) | Code quality, security hotspots, bugs | LGPL / Commercial |
+| | [Semgrep](https://semgrep.dev/) | Lightweight static analysis, custom rules | LGPL 2.1 |
+| | [Snyk Code](https://snyk.io/product/snyk-code/) | Developer-focused SAST | Freemium |
+| | [CodeQL](https://codeql.github.com/) | GitHub-native semantic code analysis | Free (GitHub) |
+| **Dependency Scan** | [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/) | Known vulnerable dependencies | Apache 2.0 |
+| | [Snyk](https://snyk.io/) | Open source deps, fix PRs | Freemium |
+| | `npm audit` / `pip-audit` / `go mod` | Built-in language scanners | — |
+| **Secret Scan** | [Gitleaks](https://github.com/gitleaks/gitleaks) | Detect secrets in repo | MIT |
+| | [TruffleHog](https://github.com/trufflesecurity/trufflehog) | Find credentials, API keys | AGPL |
+| | [detect-secrets](https://github.com/Yelp/detect-secrets) | Prevent committing secrets | Apache 2.0 |
+
+*Placement:* Container scan runs after Docker Build. SAST/dependency scan can run after Test (in parallel or sequentially). Secret scan often runs at trigger/checkout.
 
 ---
 

@@ -138,7 +138,8 @@
   <!-- ── SECURITY SCAN ── -->
   <rect x="325" y="402" width="250" height="48" rx="6" fill="url(#securityGrad)" stroke="#da3633" stroke-width="1.5" filter="url(#softglow)"/>
   <text x="450" y="421" text-anchor="middle" font-size="10" fill="#ffa198" letter-spacing="2">STAGE 4</text>
-  <text x="450" y="438" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Security Scan (Trivy)</text>
+  <text x="450" y="438" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">Security Scan</text>
+  <text x="450" y="452" text-anchor="middle" font-size="9" fill="#ffa198">Trivy / Snyk / Clair / Semgrep</text>
 
   <!-- Arrow: Security → Docker Push -->
   <line x1="450" y1="450" x2="450" y2="478" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>

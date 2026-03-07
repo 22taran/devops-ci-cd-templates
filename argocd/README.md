@@ -12,16 +12,49 @@ ArgoCD GitOps application configurations for 8 tech stacks.
 
 ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes. It monitors Git repositories for changes and automatically syncs the desired state to the cluster. CI builds and pushes images; ArgoCD deploys the manifests.
 
-## CI/CD + GitOps Flow
+## CI/CD + GitOps Flow Diagram
 
-```mermaid
-flowchart LR
-    CI[CI Pipeline] -->|Build & Push Image| Registry[Docker Registry]
-    Dev[Developer] -->|Push Manifests| Git[Git Repo]
-    ArgoCD[ArgoCD] -->|Watch| Git
-    ArgoCD -->|Sync| K8s[Kubernetes]
-    Registry -->|Pull Image| K8s
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  CI Pipeline                                                    │
+│  Build & Push Image (Jenkins, GitHub Actions, etc.)             │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Registry                                                │
+│  Image stored with tag (sha, latest)                            │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  Developer                                                      │
+│  Push K8s manifests to Git repo                                 │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Repo                                                       │
+│  Manifests (Deployment, Service, etc.) in repo path             │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  ArgoCD                                                         │
+│  Watch Git repo | Sync desired state to cluster                 │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Kubernetes                                                     │
+│  Pull image from registry | Apply manifests                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 

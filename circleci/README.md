@@ -14,20 +14,64 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 - **Orbs**: Reusable packages (e.g., docker orb for build/push)
 - **Workflows**: Job dependencies, branch filters
 - **Caching**: restore_cache / save_cache for deps
+- **Security**: Optional stage (Trivy, Snyk, etc.) between Docker Build and Push
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart TB
-    trigger[Git Push / PR] --> build[Build]
-    build --> lint[Lint]
-    build --> test[Test]
-    lint --> dockerBuild[Docker Build]
-    test --> dockerBuild
-    dockerBuild --> dockerPush[Docker Push]
-    dockerPush --> deploy[Deploy]
-    deploy --> done[Done]
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Push / PR                                                  │
+│  CircleCI: workflows with branch filters                        │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build                                                          │
+│  executor: cimg/* | restore_cache, persist_to_workspace         │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Lint                                                           │
+│  job: restore_cache | checkstyle, eslint, flake8, etc.          │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Test                                                           │
+│  store_test_results, store_artifacts | JUnit XML, coverage      │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Build                                                   │
+│  setup_remote_docker | docker orb build                         │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Push                                                    │
+│  docker orb push | DOCKER_USERNAME, DOCKER_PASSWORD             │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  job: kubectl / helm / docker run                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 
@@ -36,7 +80,9 @@ flowchart TB
 | **build** | Compile or install deps | checkout, restore_cache, run build commands, save_cache, persist_to_workspace | Workspace: target/, node_modules, etc. |
 | **lint** | Static analysis | restore_cache, run lint (checkstyle, eslint, etc.) | — |
 | **test** | Unit tests + coverage | restore_cache, run tests, store_test_results, store_artifacts | JUnit XML, coverage reports |
-| **docker-build** | Build and push image | setup_remote_docker, docker orb build + push. Runs on every branch. | Image in registry |
+| **docker-build** | Build image | setup_remote_docker, docker orb build. | Image in local daemon |
+| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **docker-push** | Push to registry | docker orb push. Runs after security. | Image in registry |
 | **deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace echo with kubectl/Helm/docker run. | — |
 
 ## Tech Stacks

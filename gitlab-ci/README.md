@@ -11,26 +11,67 @@ GitLab CI/CD pipeline configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `.gitlab-ci.yml` uses GitLab's native pipeline syntax with:
-- **Stages**: build → lint → test → docker (build + push) → deploy
+- **Stages**: build → lint → test → docker build → security → docker push → deploy
 - **Docker images** per job for reproducible builds
 - **Caching** for dependency speedup (Maven, npm, pip, etc.)
 - **Artifacts** for build outputs and coverage reports
 
-## CI/CD Pipeline Diagram
+## CI/CD Pipeline Flow Diagram
 
-```mermaid
-flowchart LR
-    trigger[Git Push / MR] --> build[Build]
-    build --> lint[Lint]
-    build --> test[Test]
-    lint --> docker[Docker Build and Push]
-    test --> docker
-    docker --> deployCheck{Branch = main?}
-    deployCheck -->|Yes| deploy[Deploy to Staging]
-    deployCheck -->|No| skip[Skip Deploy]
-    deploy --> done[Done]
-    skip --> done
+<div align="center">
+
+<pre>
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  Git Push / MR                                                  │
+│  GitLab CI: rules / only: branches                              │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Build                                                          │
+│  stage: build | image: maven/node/python | cache deps           │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Lint                                                           │
+│  stage: lint | runs parallel with test (checkstyle/eslint/etc)  │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Test                                                           │
+│  stage: test | artifacts: surefire-reports, jacoco, coverage    │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Build                                                   │
+│  stage: docker | dind service | docker build                    │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Semgrep / Snyk / Gitleaks | fail on critical           │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Docker Push                                                    │
+│  stage: docker | CI_REGISTRY, CI_REGISTRY_IMAGE                 │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Deploy                                                         │
+│  stage: deploy | when: manual or on main | kubectl / helm       │
+└─────────────────────────────────────────────────────────────────┘
+```
+</pre>
+
+</div>
 
 ## Stage-by-Stage Explanation
 
@@ -39,7 +80,9 @@ flowchart LR
 | **build** | Compile or install deps | Uses Docker image per stack. Maven compile, npm ci, pip install, etc. Caches deps for speed. | JAR, node_modules, publish/ |
 | **lint** | Static analysis | Runs in parallel with test. checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
 | **test** | Unit tests + coverage | Runs tests. JUnit/Cobertura reports, coverage extraction. Artifacts expire after 7 days. | surefire-reports, jacoco, coverage |
-| **docker** | Containerize and push | Docker-in-Docker (dind). Build then push with commit SHA + latest. Runs every branch. | Image in registry |
+| **docker build** | Build image | Docker-in-Docker (dind). Build image with commit SHA + latest. | Image in local daemon |
+| **security** | Vulnerability check | Optional. Trivy (container), Semgrep (SAST), Snyk, Gitleaks. Fail on critical CVEs. | Scan report |
+| **docker push** | Push to registry | Push image to CI_REGISTRY. | Image in registry |
 | **deploy** | Deploy to staging | Often `when: manual` for approval. Supports Docker or Kubernetes. Replace echo with kubectl/Helm. | — |
 
 ## Tech Stacks

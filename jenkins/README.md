@@ -12,7 +12,7 @@ Declarative Jenkins pipeline configurations for 8 tech stacks.
 
 Each `Jenkinsfile` uses declarative pipeline syntax with:
 - **Docker-based agents** for consistent builds
-- **6 stages**: Build → Lint → Test → Docker Build → Docker Push → Deploy
+- **7 stages**: Build → Lint → Test → Docker Build → Security Scan → Docker Push → Deploy
 - **Post-build actions** for cleanup and notifications
 - **Environment variables** for configuration
 
@@ -53,6 +53,12 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
+│  Security Scan                                                  │
+│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+└─────────────────────────────────────────────────────────────────┘
+|
+▼
+┌─────────────────────────────────────────────────────────────────┐
 │  Docker Push                                                    │
 │  docker.withRegistry + docker-hub-credentials                   │
 └─────────────────────────────────────────────────────────────────┘
@@ -83,6 +89,7 @@ Each `Jenkinsfile` uses declarative pipeline syntax with:
 | **Test** | Unit tests + coverage | Run tests with coverage. Publish JUnit, Cobertura, or HTML reports to Jenkins. | Test reports, coverage data |
 | **Package / Publish** | (Java, .NET only) | Create deployable JAR or publish output. Archive artifacts for later use. | JAR, publish folder |
 | **Docker Build** | Build image | Build Docker image from project Dockerfile. Image stays in local daemon for Push stage. | Image in local daemon |
+| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
 | **Docker Push** | Push to registry | Authenticate to registry, push image with build number and `latest` tags. | Image in registry |
 | **Deploy** | Deploy to staging | Runs on every branch. Supports Docker (`docker run`, `docker-compose`) or Kubernetes (`kubectl`, Helm). Replace placeholder with your deployment logic. | — |
 | **Post Actions** | Cleanup and notify | On success/failure: echo status. Always: `cleanWs()` to free disk. | Clean workspace |
