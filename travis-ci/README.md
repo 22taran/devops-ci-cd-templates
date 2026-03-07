@@ -11,9 +11,9 @@ Travis CI configurations for 8 tech stacks.
 ## Pipeline Structure
 
 Each `.travis.yml` uses Travis stages with:
-- **Stages**: build → lint → test → docker → deploy
+- **Stages**: build → parallel (lint, test, security-code) → docker build → security (image) → docker push → deploy
 - **Caching**: Maven, npm, pip, etc. for dependency speedup
-- **Stages**: build → lint → test → docker (Build + Push) → deploy on every branch
+- **Security**: Code scan (Trivy fs, Semgrep, Gitleaks) in parallel with Lint/Test; Image scan (Trivy, Snyk Container) after Docker Build
 
 ## CI/CD Pipeline Flow Diagram
 
@@ -34,14 +34,8 @@ Each `.travis.yml` uses Travis stages with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lint                                                           │
-│  stage: lint | checkstyle, eslint, flake8, go vet, etc.         │
-└─────────────────────────────────────────────────────────────────┘
-|
-▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Test                                                           │
-│  stage: test | JUnit, pytest, go test, etc.                     │
+│  Lint | Test | Security (Code)                                  │
+│  Parallel: checkstyle/eslint, junit, Trivy fs, Semgrep, Gitleaks│
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -52,8 +46,8 @@ Each `.travis.yml` uses Travis stages with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair | scan built image, fail on CVE │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -65,7 +59,7 @@ Each `.travis.yml` uses Travis stages with:
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Deploy                                                         │
-│  stage: deploy | kubectl / helm / docker run                     │
+│  stage: deploy | kubectl / helm / docker run                    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 </pre>
@@ -77,12 +71,20 @@ Each `.travis.yml` uses Travis stages with:
 | Stage | Purpose | What Happens | Artifacts / Output |
 |-------|---------|--------------|--------------------|
 | **build** | Compile or install deps | Maven compile/package, npm ci, pip install, etc. Caches deps. | JAR, build artifacts |
-| **lint** | Static analysis | checkstyle, ESLint, flake8, go vet, etc. Fails on violations. | — |
-| **test** | Unit tests | Runs tests. Some configs publish coverage. | — |
+| **lint** | Static analysis | Runs in parallel with test and security-code. checkstyle, ESLint, flake8, go vet, etc. | — |
+| **test** | Unit tests | Runs in parallel. Some configs publish coverage. | — |
+| **security-code** | SAST, deps, secrets | Runs in parallel. Trivy fs, Semgrep, Snyk Code, OWASP Dep-Check, Gitleaks. | Scan report |
 | **docker (build)** | Build image | Docker build with tag. | Image in local daemon |
-| **security** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **security (image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair. Scan image for CVEs. | Scan report |
 | **docker (push)** | Push to registry | Docker login, push. Runs on every branch. | Image in registry |
 | **deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace echo with kubectl/Helm/docker run. | — |
+
+## Security Tools (Industry Options)
+
+| Category | Purpose | Tools |
+|----------|---------|-------|
+| **Security (Code)** | SAST, dependency scan, secret scan — runs in parallel with Lint/Test | [Trivy fs](https://trivy.dev/), [Semgrep](https://semgrep.dev/), [Snyk Code](https://snyk.io/product/snyk-code/), [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/), [Gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog) |
+| **Security (Image)** | Container scan — runs after Docker Build, before Push | [Trivy](https://trivy.dev/), [Snyk Container](https://snyk.io/product/container-vulnerability-management/), [Clair](https://github.com/quay/clair), [Anchore](https://anchore.com/) |
 
 ## Tech Stacks
 

@@ -63,6 +63,7 @@
 
 Every pipeline follows a consistent pattern. Below is the full CI/CD flow including optional stages (Security Scan, Staging → Production):
 
+<div align="center">
 <pre>
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -107,6 +108,7 @@ Every pipeline follows a consistent pattern. Below is the full CI/CD flow includ
 └─────────────────────────────────────────────────────────────────┘
 ```
 </pre>
+
 
 | Stage         | Description                                     |
 |---------------|-------------------------------------------------|

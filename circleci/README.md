@@ -14,7 +14,7 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 - **Orbs**: Reusable packages (e.g., docker orb for build/push)
 - **Workflows**: Job dependencies, branch filters
 - **Caching**: restore_cache / save_cache for deps
-- **Security**: Optional stage (Trivy, Snyk, etc.) between Docker Build and Push
+- **Security**: Parallel (Lint | Test | Security Code) after Build; Security (Image) after Docker Build, before Push
 
 ## CI/CD Pipeline Flow Diagram
 
@@ -35,14 +35,8 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lint                                                           │
-│  job: restore_cache | checkstyle, eslint, flake8, etc.          │
-└─────────────────────────────────────────────────────────────────┘
-|
-▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Test                                                           │
-│  store_test_results, store_artifacts | JUnit XML, coverage      │
+│  Lint | Test | Security (Code)                                  │
+│  Parallel: checkstyle/eslint, JUnit, Trivy fs, Semgrep, Gitleaks│
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -53,8 +47,8 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / Snyk / OWASP Dep-Check / Gitleaks | fail on critical   │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair | scan built image, fail on CVE │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -78,12 +72,20 @@ Each `config.yml` uses CircleCI 2.1 syntax with:
 | Job | Purpose | What Happens | Artifacts / Output |
 |-----|---------|--------------|--------------------|
 | **build** | Compile or install deps | checkout, restore_cache, run build commands, save_cache, persist_to_workspace | Workspace: target/, node_modules, etc. |
-| **lint** | Static analysis | restore_cache, run lint (checkstyle, eslint, etc.) | — |
-| **test** | Unit tests + coverage | restore_cache, run tests, store_test_results, store_artifacts | JUnit XML, coverage reports |
+| **lint** | Static analysis | Runs in parallel with test and security-code. checkstyle, eslint, etc. | — |
+| **test** | Unit tests + coverage | Runs in parallel. store_test_results, store_artifacts. | JUnit XML, coverage reports |
+| **security-code** | SAST, deps, secrets | Runs in parallel. Trivy fs, Semgrep, Snyk, OWASP Dep-Check, Gitleaks. | Scan report |
 | **docker-build** | Build image | setup_remote_docker, docker orb build. | Image in local daemon |
-| **Security Scan** | Vulnerability check | Optional. Trivy (container), Snyk, OWASP Dependency-Check, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **Security (Image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair. Scan image for CVEs. | Scan report |
 | **docker-push** | Push to registry | docker orb push. Runs after security. | Image in registry |
 | **deploy** | Deploy to staging | Runs on every branch. Supports Docker or Kubernetes. Replace echo with kubectl/Helm/docker run. | — |
+
+## Security Tools (Industry Options)
+
+| Category | Purpose | Tools |
+|----------|---------|-------|
+| **Security (Code)** | SAST, dependency scan, secret scan — runs in parallel with Lint/Test | [Trivy fs](https://trivy.dev/), [Semgrep](https://semgrep.dev/), [Snyk Code](https://snyk.io/product/snyk-code/), [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/), [Gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog) |
+| **Security (Image)** | Container scan — runs after Docker Build, before Push | [Trivy](https://trivy.dev/), [Snyk Container](https://snyk.io/product/container-vulnerability-management/), [Clair](https://github.com/quay/clair), [Anchore](https://anchore.com/) |
 
 ## Tech Stacks
 

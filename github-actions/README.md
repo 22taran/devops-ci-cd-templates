@@ -13,7 +13,7 @@ GitHub-native CI/CD workflow configurations for 8 tech stacks.
 Each `ci.yml` workflow includes:
 - **Triggers**: Push to `main`/`develop`, pull requests to `main`
 - **Caching**: Language-specific dependency caching (Maven, npm, pip, etc.)
-- **7 jobs**: Build → Lint → Test → Docker Build → Security Scan → Docker Push → Deploy
+- **Jobs**: Build → Parallel (Lint | Test | Security Code) → Docker Build → Security (Image) → Docker Push → Deploy
 - **Artifact uploads** for build outputs and coverage reports
 
 ## CI/CD Pipeline Flow Diagram
@@ -35,14 +35,8 @@ Each `ci.yml` workflow includes:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lint                                                           │
-│  job: runs in parallel with test (checkstyle/eslint/flake8/etc) │
-└─────────────────────────────────────────────────────────────────┘
-|
-▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Test                                                           │
-│  job: coverage artifact upload | JUnit, Cobertura               │
+│  Lint | Test | Security (Code)                                  │
+│  Parallel: checkstyle/eslint, JUnit, Trivy fs, CodeQL, Gitleaks │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -53,8 +47,8 @@ Each `ci.yml` workflow includes:
 |
 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Security Scan                                                  │
-│  Trivy / CodeQL / Snyk / Gitleaks | fail on critical CVEs      │
+│  Security (Image)                                               │
+│  Trivy / Snyk Container / Clair | scan built image, fail on CVE │
 └─────────────────────────────────────────────────────────────────┘
 |
 ▼
@@ -79,10 +73,11 @@ Each `ci.yml` workflow includes:
 |-----|---------|--------------|--------------------|
 | **Triggers** | When to run | `on.push` to main/develop, `on.pull_request` to main. Configurable per workflow. | — |
 | **Build** | Compile or install deps | setup-node/java/python/etc, install deps, compile. Uses `actions/cache` or built-in cache. | Uploaded artifacts (JAR, node_modules cache key) |
-| **Lint** | Static analysis | Runs in parallel with test. checkstyle, ESLint, flake8, go vet, etc. Fails workflow on violations. | — |
-| **Test** | Unit tests + coverage | Runs tests, uploads coverage as artifact. Some workflows use matrix for multi-version testing. | coverage-report artifact |
+| **Lint** | Static analysis | Runs in parallel with Test and Security (Code). checkstyle, ESLint, flake8, go vet, etc. | — |
+| **Test** | Unit tests + coverage | Runs in parallel. Uploads coverage artifact. Matrix for multi-version testing. | coverage-report artifact |
+| **Security (Code)** | SAST, deps, secrets | Runs in parallel. Trivy fs, CodeQL, Snyk, Gitleaks. Fail on critical. | Scan report |
 | **Docker Build** | Build image | Docker Buildx, build with `push: false` and `load: true`. Tags: `sha` + `latest`. | Image in local daemon |
-| **Security Scan** | Vulnerability check | Optional. Trivy (container), CodeQL (SAST), Snyk, Gitleaks (secrets). Fail on critical CVEs. | Scan report |
+| **Security (Image)** | Container scan | After Docker Build. Trivy, Snyk Container, Clair. Scan image for CVEs. | Scan report |
 | **Docker Push** | Push to registry | Login, push image. Runs after build. | Image in registry |
 | **Deploy** | Deploy to staging | Runs every run. Supports Docker (docker run) or Kubernetes (kubectl/Helm). Replace with your deploy logic. | — |
 
